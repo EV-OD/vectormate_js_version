@@ -303,68 +303,102 @@ export function useCanvasInteractions({
             break;
         }
         case 'resizing': {
-            const ignoreIds = interactionState.initialShapes.map(s => s.id);
-            const snapped = getSnappedCoords(x, y, ignoreIds);
-            x = snapped.x;
-            y = snapped.y;
-            newActiveSnapLines.vertical.push(...snapped.snapLines.vertical);
-            newActiveSnapLines.horizontal.push(...snapped.snapLines.horizontal);
-
-            const snappedDx = x - interactionState.startX;
-            const snappedDy = y - interactionState.startY;
-
             const { initialShapes, handle } = interactionState;
-            const initialBounds = getBounds(initialShapes);
+            if (initialShapes.length !== 1) break; // Should not happen with new UI logic, but good practice
+            
+            const initialShape = initialShapes[0];
 
-            let newBounds = { ...initialBounds };
+            if (initialShape.rotation === 0) {
+                 // Standard logic for un-rotated shapes (supports aspect ratio lock)
+                const { x: sx, y: sy } = getSnappedCoords(x, y, [initialShape.id]);
+                const snappedDx = sx - interactionState.startX;
+                const snappedDy = sy - interactionState.startY;
 
-            if (handle.includes('e')) newBounds.width = initialBounds.width + snappedDx;
-            if (handle.includes('w')) { newBounds.width = initialBounds.width - snappedDx; newBounds.x = initialBounds.x + snappedDx; }
-            if (handle.includes('s')) newBounds.height = initialBounds.height + snappedDy;
-            if (handle.includes('n')) { newBounds.height = initialBounds.height - snappedDy; newBounds.y = initialBounds.y + snappedDy; }
+                let newBounds = { x: initialShape.x, y: initialShape.y, width: initialShape.width, height: initialShape.height };
 
-            if (e.shiftKey) {
-                const initialAspectRatio = initialBounds.height === 0 ? 1 : initialBounds.width / initialBounds.height;
-                const newAspectRatio = newBounds.height === 0 ? 1 : newBounds.width / newBounds.height;
+                if (handle.includes('e')) newBounds.width = initialShape.width + snappedDx;
+                if (handle.includes('w')) { newBounds.width = initialShape.width - snappedDx; newBounds.x = initialShape.x + snappedDx; }
+                if (handle.includes('s')) newBounds.height = initialShape.height + snappedDy;
+                if (handle.includes('n')) { newBounds.height = initialShape.height - snappedDy; newBounds.y = initialShape.y + snappedDy; }
 
-                if (handle.includes('w') || handle.includes('e')) {
-                    newBounds.height = newBounds.width / initialAspectRatio;
-                    if (handle.includes('n')) newBounds.y = initialBounds.y + initialBounds.height - newBounds.height;
-                } else if (handle.includes('n') || handle.includes('s')) {
-                    newBounds.width = newBounds.height * initialAspectRatio;
-                    if (handle.includes('w')) newBounds.x = initialBounds.x + initialBounds.width - newBounds.width;
-                } else { // corner handles
-                    if (newAspectRatio > initialAspectRatio) {
-                        newBounds.width = newBounds.height * initialAspectRatio;
-                    } else {
-                        newBounds.height = newBounds.width / initialAspectRatio;
+                if (e.shiftKey) {
+                    const aspectRatio = initialShape.height === 0 ? 1 : initialShape.width / initialShape.height;
+                    const newAspectRatio = newBounds.height === 0 ? 1 : newBounds.width / newBounds.height;
+                    
+                    const changedWidth = newBounds.width !== initialShape.width;
+                    const changedHeight = newBounds.height !== initialShape.height;
+
+                    if (changedWidth && !changedHeight) { // e.g., 'e', 'w'
+                        newBounds.height = newBounds.width / aspectRatio;
+                    } else if (!changedWidth && changedHeight) { // e.g., 'n', 's'
+                        newBounds.width = newBounds.height * aspectRatio;
+                    } else { // Corner handles
+                        if (newAspectRatio > aspectRatio) {
+                            newBounds.width = newBounds.height * aspectRatio;
+                        } else {
+                            newBounds.height = newBounds.width / aspectRatio;
+                        }
                     }
 
-                    if (handle.includes('n')) newBounds.y = initialBounds.y + initialBounds.height - newBounds.height;
-                    if (handle.includes('w')) newBounds.x = initialBounds.x + initialBounds.width - newBounds.width;
+                    if (handle.includes('n')) newBounds.y = (initialShape.y + initialShape.height) - newBounds.height;
+                    if (handle.includes('w')) newBounds.x = (initialShape.x + initialShape.width) - newBounds.width;
                 }
-            }
-            
-            newBounds.width = Math.max(0, newBounds.width);
-            newBounds.height = Math.max(0, newBounds.height);
-            
-            const scaleX = initialBounds.width > 0 ? newBounds.width / initialBounds.width : 0;
-            const scaleY = initialBounds.height > 0 ? newBounds.height / initialBounds.height : 0;
 
-            const updatedShapes = initialShapes.map(shape => {
-                const newX = newBounds.x + (shape.x - initialBounds.x) * scaleX;
-                const newY = newBounds.y + (shape.y - initialBounds.y) * scaleY;
-                const newWidth = shape.width * scaleX;
-                const newHeight = shape.height * scaleY;
+                newBounds.width = Math.max(1, newBounds.width);
+                newBounds.height = Math.max(1, newBounds.height);
                 
-                const updatedShape: Shape = {...shape, x: newX, y: newY, width: newWidth, height: newHeight};
+                const updatedShape: Shape = { ...initialShape, ...newBounds };
+                 if (updatedShape.type === 'polygon') {
+                    updatedShape.points = getHexagonPoints(updatedShape.width, updatedShape.height);
+                }
+                updateShapes([updatedShape]);
 
+            } else {
+                // Special logic for rotated shapes
+                const angleRad = initialShape.rotation * (Math.PI / 180);
+                const cos = Math.cos(angleRad);
+                const sin = Math.sin(angleRad);
+
+                const localDx = dx * cos + dy * sin;
+                const localDy = -dx * sin + dy * cos;
+
+                let dWidth = 0, dHeight = 0;
+
+                if (handle.includes('e')) dWidth = localDx;
+                if (handle.includes('w')) dWidth = -localDx;
+                if (handle.includes('s')) dHeight = localDy;
+                if (handle.includes('n')) dHeight = -localDy;
+
+                const newWidth = Math.max(1, initialShape.width + dWidth);
+                const newHeight = Math.max(1, initialShape.height + dHeight);
+
+                const actualDWidth = newWidth - initialShape.width;
+                const actualDHeight = newHeight - initialShape.height;
+                
+                let dCenterX_local = 0, dCenterY_local = 0;
+                if (handle.includes('e')) dCenterX_local = actualDWidth / 2;
+                if (handle.includes('w')) dCenterX_local = -actualDWidth / 2;
+                if (handle.includes('s')) dCenterY_local = actualDHeight / 2;
+                if (handle.includes('n')) dCenterY_local = -actualDHeight / 2;
+
+                const dCenterX_world = dCenterX_local * cos - dCenterY_local * sin;
+                const dCenterY_world = dCenterX_local * sin + dCenterY_local * cos;
+
+                const initialCenterX = initialShape.x + initialShape.width / 2;
+                const initialCenterY = initialShape.y + initialShape.height / 2;
+
+                const newCenterX = initialCenterX + dCenterX_world;
+                const newCenterY = initialCenterY + dCenterY_world;
+
+                const newX = newCenterX - newWidth / 2;
+                const newY = newCenterY - newHeight / 2;
+                
+                const updatedShape: Shape = { ...initialShape, x: newX, y: newY, width: newWidth, height: newHeight };
                 if (updatedShape.type === 'polygon') {
                     updatedShape.points = getHexagonPoints(newWidth, newHeight);
                 }
-                return updatedShape;
-            });
-            updateShapes(updatedShapes);
+                updateShapes([updatedShape]);
+            }
             break;
         }
         case 'rotating': {
@@ -480,7 +514,7 @@ export function useCanvasInteractions({
         setContextMenu({
             x: e.clientX,
             y: e.clientY,
-            shapeId: shapeId,
+            shapeId: ahapeId,
         });
     } else {
         setContextMenu(null);

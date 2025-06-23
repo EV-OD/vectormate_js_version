@@ -9,26 +9,28 @@ const getHandlePosition = (handle: Handle, box: { x: number; y: number; width: n
     const halfW = width / 2;
     const halfH = height / 2;
     switch (handle) {
-        case 'nw': return { x: x, y: y };
-        case 'n': return { x: x + halfW, y: y };
-        case 'ne': return { x: x + width, y: y };
-        case 'w': return { x: x, y: y + halfH };
-        case 'e': return { x: x + width, y: y + halfH };
-        case 'sw': return { x: x, y: y + height };
-        case 's': return { x: x + halfW, y: y + height };
-        case 'se': return { x: x + width, y: y + height };
-        case 'rotate': return { x: x + halfW, y: y - ROTATE_HANDLE_OFFSET / scale };
+        case 'nw': return { x: 0, y: 0 };
+        case 'n': return { x: halfW, y: 0 };
+        case 'ne': return { x: width, y: 0 };
+        case 'w': return { x: 0, y: halfH };
+        case 'e': return { x: width, y: halfH };
+        case 'sw': return { x: 0, y: height };
+        case 's': return { x: halfW, y: height };
+        case 'se': return { x: width, y: height };
+        case 'rotate': return { x: halfW, y: -ROTATE_HANDLE_OFFSET / scale };
     }
 };
 
 export const SelectionBox = ({
     bounds,
+    rotation,
     resizable,
     rotatable,
     onMouseDown,
     scale,
 }: {
     bounds: { x: number; y: number; width: number; height: number; };
+    rotation: number;
     resizable: boolean;
     rotatable: boolean;
     onMouseDown: (e: React.MouseEvent) => void;
@@ -44,8 +46,13 @@ export const SelectionBox = ({
     
     const handleSize = HANDLE_SIZE / scale;
 
+    const boxCenter = {
+        x: bounds.x + bounds.width / 2,
+        y: bounds.y + bounds.height / 2,
+    };
+
     return (
-        <g>
+        <g transform={`rotate(${rotation || 0} ${boxCenter.x} ${boxCenter.y})`}>
             <rect
                 x={bounds.x}
                 y={bounds.y}
@@ -58,7 +65,7 @@ export const SelectionBox = ({
                 pointerEvents="none"
             />
             {resizable && handles.map(({ name, cursor }) => {
-                const pos = getHandlePosition(name, bounds, scale);
+                const pos = getHandlePosition(name, {x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height}, scale);
                 return (
                     <rect
                         key={name}
@@ -72,14 +79,15 @@ export const SelectionBox = ({
                         className={cursor}
                         data-handle={name}
                         onMouseDown={onMouseDown}
+                        transform={`translate(${bounds.x}, ${bounds.y})`}
                     />
                 );
             })}
             {rotatable && (() => {
-                const topCenter = getHandlePosition('n', bounds, scale);
-                const rotHandlePos = getHandlePosition('rotate', bounds, scale);
+                const topCenter = getHandlePosition('n', {x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height}, scale);
+                const rotHandlePos = getHandlePosition('rotate', {x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height}, scale);
                 return (
-                    <g>
+                    <g transform={`translate(${bounds.x}, ${bounds.y})`}>
                         <line x1={topCenter.x} y1={topCenter.y} x2={rotHandlePos.x} y2={rotHandlePos.y} stroke={SELECTION_COLOR} strokeWidth={1 / scale} />
                         <circle
                             cx={rotHandlePos.x}

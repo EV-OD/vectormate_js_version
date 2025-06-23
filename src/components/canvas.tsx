@@ -41,10 +41,17 @@ export function Canvas(props: CanvasProps) {
     const selected = shapes.filter(s => selectedShapeIds.includes(s.id));
     if (selected.length === 0) return null;
     
-    const bounds = getBounds(selected);
-    const resizable = !selected.some(s => s.rotation !== 0);
+    const rotatable = selected.length > 0;
 
-    return { ...bounds, resizable, rotatable: selected.length > 0 };
+    if (selected.length === 1) {
+        const shape = selected[0];
+        const bounds = { x: shape.x, y: shape.y, width: shape.width, height: shape.height };
+        return { bounds, resizable: true, rotatable, rotation: shape.rotation };
+    } else {
+        const bounds = getBounds(selected);
+        // Resizing multiple objects, especially rotated ones, is complex. Disable for now.
+        return { bounds, resizable: false, rotatable, rotation: 0 };
+    }
   }, [shapes, selectedShapeIds]);
 
   return (
@@ -134,7 +141,14 @@ export function Canvas(props: CanvasProps) {
         </g>
         <g>
           {selectionBox && (
-            <SelectionBox bounds={selectionBox} resizable={selectionBox.resizable} rotatable={selectionBox.rotatable} onMouseDown={handleMouseDown} scale={canvasView.scale} />
+            <SelectionBox 
+              bounds={selectionBox.bounds} 
+              rotation={selectionBox.rotation}
+              resizable={selectionBox.resizable} 
+              rotatable={selectionBox.rotatable} 
+              onMouseDown={handleMouseDown} 
+              scale={canvasView.scale} 
+            />
           )}
         </g>
         {marquee && (
