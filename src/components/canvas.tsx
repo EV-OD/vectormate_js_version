@@ -128,7 +128,6 @@ export function Canvas({
         {shapes.map(shape => {
           const commonProps = {
             'data-shape-id': shape.id,
-            key: shape.id,
             transform: `rotate(${shape.rotation} ${shape.x + shape.width / 2} ${shape.y + shape.height / 2})`,
             fill: shape.fill,
             'fill-opacity': shape.opacity,
@@ -136,11 +135,13 @@ export function Canvas({
           };
           switch (shape.type) {
             case 'rectangle':
-              return <rect x={shape.x} y={shape.y} width={shape.width} height={shape.height} {...commonProps} />;
+              return <rect key={shape.id} x={shape.x} y={shape.y} width={shape.width} height={shape.height} {...commonProps} />;
             case 'circle':
-              return <ellipse cx={shape.x + shape.width / 2} cy={shape.y + shape.height / 2} rx={shape.width / 2} ry={shape.height / 2} {...commonProps} />;
-            case 'polygon':
-                return <polygon points={shape.points} transform={`translate(${shape.x} ${shape.y}) ` + commonProps.transform} {...commonProps} />;
+              return <ellipse key={shape.id} cx={shape.x + shape.width / 2} cy={shape.y + shape.height / 2} rx={shape.width / 2} ry={shape.height / 2} {...commonProps} />;
+            case 'polygon': {
+                const { transform, ...restProps } = commonProps;
+                return <polygon key={shape.id} points={shape.points} transform={`translate(${shape.x} ${shape.y}) ` + transform} {...restProps} />;
+              }
           }
         })}
       </g>
