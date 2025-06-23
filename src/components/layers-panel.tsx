@@ -4,8 +4,9 @@ import React, { useState } from 'react';
 import { type Shape, ShapeType } from '@/lib/types';
 import { ScrollArea } from './ui/scroll-area';
 import { Button } from './ui/button';
-import { CopyPlus, Trash2, Square, Circle, Hexagon, Minus } from 'lucide-react';
+import { CopyPlus, Trash2, Square, Circle, Hexagon, Minus, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Input } from './ui/input';
 
 type LayersPanelProps = {
   shapes: Shape[];
@@ -14,6 +15,7 @@ type LayersPanelProps = {
   onDelete: () => void;
   onDuplicate: () => void;
   onReorder: (fromId: string, toId: string, position: 'top' | 'bottom') => void;
+  onRename: (id: string, name: string) => void;
 };
 
 const ShapeIcon = ({ type }: { type: ShapeType }) => {
@@ -26,10 +28,20 @@ const ShapeIcon = ({ type }: { type: ShapeType }) => {
   }
 };
 
-export function LayersPanel({ shapes, selectedShapeIds, onSelectShape, onDelete, onDuplicate, onReorder }: LayersPanelProps) {
+export function LayersPanel({ 
+  shapes, 
+  selectedShapeIds, 
+  onSelectShape, 
+  onDelete, 
+  onDuplicate, 
+  onReorder,
+  onRename
+}: LayersPanelProps) {
   const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
   const [dropIndicator, setDropIndicator] = useState<{ targetId: string; position: 'top' | 'bottom' } | null>(null);
-
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editedName, setEditedName] = useState('');
+  
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>, id: string) => {
     e.dataTransfer.effectAllowed = 'move';
     setDraggedItemId(id);
@@ -56,6 +68,28 @@ export function LayersPanel({ shapes, selectedShapeIds, onSelectShape, onDelete,
     setDraggedItemId(null);
     setDropIndicator(null);
   };
+
+  const handleRenameStart = (shape: Shape) => {
+    setEditingId(shape.id);
+    setEditedName(shape.name || '');
+  };
+
+  const handleRenameConfirm = () => {
+    if (editingId && editedName.trim()) {
+      onRename(editingId, editedName.trim());
+    }
+    setEditingId(null);
+    setEditedName('');
+  };
+
+  const handleRenameKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleRenameConfirm();
+    } else if (e.key === 'Escape') {
+      setEditingId(null);
+      setEditedName('');
+    }
+  };
   
   const reversedShapes = [...shapes].reverse();
 
@@ -66,12 +100,16 @@ export function LayersPanel({ shapes, selectedShapeIds, onSelectShape, onDelete,
           {reversedShapes.map((shape) => (
             <div
               key={shape.id}
-              onClick={(e) => onSelectShape(shape.id, e.shiftKey)}
-              draggable
+              onClick={(e) => {
+                if (editingId !== shape.id) {
+                  onSelectShape(shape.id, e.shiftKey)
+                }
+              }}
+              draggable={!editingId}
               onDragStart={(e) => handleDragStart(e, shape.id)}
               onDragOver={(e) => handleDragOver(e, shape.id)}
               className={cn(
-                "flex items-center gap-2 p-2 rounded-md cursor-pointer hover:bg-muted/50 transition-colors",
+                "group flex items-center gap-2 p-2 rounded-md cursor-pointer hover:bg-muted/80 transition-colors",
                 selectedShapeIds.includes(shape.id) && "bg-secondary",
                 draggedItemId === shape.id && "opacity-50",
                 dropIndicator?.targetId === shape.id && dropIndicator.position === 'top' && 'border-t-2 border-primary',
@@ -79,7 +117,31 @@ export function LayersPanel({ shapes, selectedShapeIds, onSelectShape, onDelete,
               )}
             >
               <ShapeIcon type={shape.type} />
-              <span className="truncate text-sm">{shape.type.charAt(0).toUpperCase() + shape.type.slice(1)}</span>
+              {editingId === shape.id ? (
+                <Input
+                  value={editedName}
+                  onChange={(e) => setEditedName(e.target.value)}
+                  onBlur={handleRenameConfirm}
+                  onKeyDown={handleRenameKeyDown}
+                  autoFocus
+                  className="h-7 text-sm"
+                />
+              ) : (
+                <span className="truncate text-sm flex-1">{shape.name || shape.type}</span>
+              )}
+              {editingId !== shape.id && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 opacity-0 group-hover:opacity-100"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleRenameStart(shape);
+                  }}
+                >
+                  <Pencil className="w-4 h-4" />
+                </Button>
+              )}
             </div>
           ))}
         </div>

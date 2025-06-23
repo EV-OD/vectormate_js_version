@@ -4,6 +4,7 @@ export type ShapeType = 'rectangle' | 'circle' | 'polygon' | 'line';
 
 export type BaseShape = {
   id: string;
+  name?: string;
   type: ShapeType;
   x: number;
   y: number;

@@ -21,6 +21,7 @@ type RightSidebarProps = {
   onDelete: () => void;
   onDuplicate: () => void;
   onReorder: (fromId: string, toId: string, position: 'top' | 'bottom') => void;
+  onRename: (id: string, name: string) => void;
 };
 
 export function RightSidebar({ 
@@ -30,7 +31,8 @@ export function RightSidebar({
   onSelectShape, 
   onDelete, 
   onDuplicate, 
-  onReorder 
+  onReorder,
+  onRename,
 }: RightSidebarProps) {
   
   const selectedShapes = shapes.filter(s => selectedShapeIds.includes(s.id));
@@ -105,7 +107,7 @@ export function RightSidebar({
                 <>
                   <div className="flex items-center justify-between">
                     <h2 className="text-lg font-semibold font-headline">
-                      {multipleSelected ? `${selectedShapes.length} items` : shape.type.charAt(0).toUpperCase() + shape.type.slice(1)}
+                      {multipleSelected ? `${selectedShapes.length} items` : (shape.name || shape.type.charAt(0).toUpperCase() + shape.type.slice(1))}
                     </h2>
                     <Button variant="ghost" size="icon" onClick={onDelete}>
                       <Trash2 className="w-4 h-4" />
@@ -216,6 +218,7 @@ export function RightSidebar({
             onDelete={onDelete}
             onDuplicate={onDuplicate}
             onReorder={onReorder}
+            onRename={onRename}
           />
         </TabsContent>
       </Tabs>

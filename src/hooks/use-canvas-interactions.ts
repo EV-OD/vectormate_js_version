@@ -159,7 +159,8 @@ export function useCanvasInteractions({
             }
         }
     } else {
-        const commonProps = { id: nanoid(), x, y, width: 0, height: 0, rotation: 0 };
+        const shapeName = activeTool.charAt(0).toUpperCase() + activeTool.slice(1);
+        const commonProps = { id: nanoid(), name: shapeName, x, y, width: 0, height: 0, rotation: 0 };
         let newShape: Shape;
         if(activeTool === 'polygon') {
             newShape = { ...commonProps, type: 'polygon', points: '', fill: '#cccccc', opacity: 1, strokeWidth: 0 };

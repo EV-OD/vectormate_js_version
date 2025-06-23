@@ -26,6 +26,7 @@ export function VectorEditor() {
     applyBooleanOperation,
     duplicateShapes,
     reorderShapes,
+    renameShape,
   } = useEditorState();
   
   const [activeTool, setActiveTool] = useState<Tool>('select');
@@ -102,6 +103,7 @@ export function VectorEditor() {
 
     if (propType === 'star') {
         addProp({
+            name: 'Star',
             type: 'polygon',
             x: x - 50, y: y - 50, width: 100, height: 100, rotation: 0,
             fill: '#FFD700', opacity: 1, strokeWidth: 0,
@@ -109,6 +111,7 @@ export function VectorEditor() {
         });
     } else if (propType === 'heart') {
         addProp({
+            name: 'Heart',
             type: 'polygon',
             x: x - 50, y: y - 50, width: 100, height: 90, rotation: 0,
             fill: '#E31B23', opacity: 1, strokeWidth: 0,
@@ -158,6 +161,7 @@ export function VectorEditor() {
           onDelete={deleteSelectedShapes}
           onDuplicate={duplicateSelectedShapes}
           onReorder={reorderShapes}
+          onRename={renameShape}
         />
       </div>
       {contextMenu && (

@@ -19,12 +19,18 @@ type Action =
   | { type: 'BRING_TO_FRONT'; payload: string[] }
   | { type: 'SEND_TO_BACK'; payload: string[] }
   | { type: 'DUPLICATE_SHAPES'; payload: string[] }
-  | { type: 'REORDER_SHAPES'; payload: { fromId: string; toId: string; position: 'top' | 'bottom' } };
+  | { type: 'REORDER_SHAPES'; payload: { fromId: string; toId: string; position: 'top' | 'bottom' } }
+  | { type: 'RENAME_SHAPE'; payload: { id: string; name: string } };
 
 function editorReducer(state: EditorState, action: Action): EditorState {
   switch (action.type) {
-    case 'ADD_SHAPE':
-      return { ...state, shapes: [...state.shapes, action.payload] };
+    case 'ADD_SHAPE': {
+      const shape = action.payload;
+      if (!shape.name) {
+        shape.name = shape.type.charAt(0).toUpperCase() + shape.type.slice(1);
+      }
+      return { ...state, shapes: [...state.shapes, shape] };
+    }
     case 'UPDATE_SHAPES':
         return {
             ...state,
@@ -70,6 +76,7 @@ function editorReducer(state: EditorState, action: Action): EditorState {
       const newShapes = shapesToDuplicate.map(shape => ({
         ...shape,
         id: nanoid(),
+        name: `${shape.name || shape.type} copy`,
         x: shape.x + 10,
         y: shape.y + 10,
       }));
@@ -103,6 +110,15 @@ function editorReducer(state: EditorState, action: Action): EditorState {
 
       return { ...state, shapes: reversedShapes.reverse() };
     }
+    case 'RENAME_SHAPE':
+        return {
+          ...state,
+          shapes: state.shapes.map(s =>
+            s.id === action.payload.id
+              ? { ...s, name: action.payload.name }
+              : s
+          ),
+        };
     default:
       return state;
   }
@@ -148,6 +164,10 @@ export function useEditorState() {
   const reorderShapes = useCallback((fromId: string, toId: string, position: 'top' | 'bottom') => {
     dispatch({ type: 'REORDER_SHAPES', payload: { fromId, toId, position } });
   }, []);
+  
+  const renameShape = useCallback((id: string, name: string) => {
+    dispatch({ type: 'RENAME_SHAPE', payload: { id, name } });
+  }, []);
 
   const applyBooleanOperation = (operation: 'union' | 'subtract' | 'intersect' | 'exclude') => {
     if (state.selectedShapeIds.length < 2) {
@@ -177,6 +197,7 @@ export function useEditorState() {
     sendToBack,
     applyBooleanOperation,
     duplicateShapes,
-    reorderShapes
+    reorderShapes,
+    renameShape
   };
 }
