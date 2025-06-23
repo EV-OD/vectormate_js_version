@@ -414,7 +414,7 @@ export function Canvas({
     const target = e.target as SVGElement;
     const shapeId = target.dataset.shapeId;
 
-    if (shapeId) {
+    if (shapeId && shapeId !== 'background') {
         if (!selectedShapeIds.includes(shapeId)) {
             setSelectedShapeIds([shapeId]);
         }
@@ -548,9 +548,9 @@ const SelectionBox = ({
     if (bounds.width === 0 && bounds.height === 0) return null;
 
     const handles: { name: Handle; cursor: string }[] = [
-        { name: 'nw', cursor: 'nwse-resize' }, { name: 'n', cursor: 'ns-resize' }, { name: 'ne', cursor: 'nesw-resize' },
-        { name: 'w', cursor: 'ew-resize' }, { name: 'e', cursor: 'ew-resize' },
-        { name: 'sw', cursor: 'nesw-resize' }, { name: 's', cursor: 'ns-resize' }, { name: 'se', cursor: 'nwse-resize' },
+        { name: 'nw', cursor: 'cursor-nwse-resize' }, { name: 'n', cursor: 'cursor-ns-resize' }, { name: 'ne', cursor: 'cursor-nesw-resize' },
+        { name: 'w', cursor: 'cursor-ew-resize' }, { name: 'e', cursor: 'cursor-ew-resize' },
+        { name: 'sw', cursor: 'cursor-nesw-resize' }, { name: 's', cursor: 'cursor-ns-resize' }, { name: 'se', cursor: 'cursor-nwse-resize' },
     ];
     
     const getHandlePosition = (handle: Handle, box: typeof bounds) => {
@@ -594,7 +594,7 @@ const SelectionBox = ({
                         fill={SELECTION_COLOR}
                         stroke="hsl(var(--background))"
                         strokeWidth="1"
-                        className={`cursor-${cursor}`}
+                        className={cursor}
                         data-handle={name}
                         onMouseDown={onMouseDown}
                     />
