@@ -514,7 +514,7 @@ export function useCanvasInteractions({
         setContextMenu({
             x: e.clientX,
             y: e.clientY,
-            shapeId: ahapeId,
+            shapeId: shapeId,
         });
     } else {
         setContextMenu(null);

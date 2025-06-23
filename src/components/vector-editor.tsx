@@ -4,7 +4,7 @@ import React, { useState, useCallback } from 'react';
 import { AppHeader } from '@/components/header';
 import { Toolbar } from '@/components/toolbar';
 import { Canvas } from '@/components/canvas';
-import { PropertiesPanel } from '@/components/properties-panel';
+import { RightSidebar } from '@/components/right-sidebar';
 import { type Shape, type Tool, type InteractionState, PolygonShape, type CanvasView } from '@/lib/types';
 import { exportToSvg, exportToJpeg } from '@/lib/export';
 import { ContextMenu } from './context-menu';
@@ -17,14 +17,15 @@ export function VectorEditor() {
   const {
     shapes,
     selectedShapeIds,
-    selectedShapes,
     addShape,
     updateShapes,
     setSelectedShapeIds,
     deleteShapesByIds,
     bringToFront,
     sendToBack,
-    applyBooleanOperation
+    applyBooleanOperation,
+    duplicateShapes,
+    reorderShapes,
   } = useEditorState();
   
   const [activeTool, setActiveTool] = useState<Tool>('select');
@@ -47,6 +48,12 @@ export function VectorEditor() {
   const deleteSelectedShapes = useCallback(() => {
     deleteShapesByIds(selectedShapeIds);
   }, [deleteShapesByIds, selectedShapeIds]);
+
+  const duplicateSelectedShapes = useCallback(() => {
+    duplicateShapes(selectedShapeIds);
+  }, [duplicateShapes, selectedShapeIds]);
+  
+  const selectedShapes = shapes.filter(s => selectedShapeIds.includes(s.id));
 
   const { clipboard, handleCopy, handlePaste } = useKeyboardAndClipboard({
     selectedShapes,
@@ -110,6 +117,18 @@ export function VectorEditor() {
     }
   };
 
+  const handleSelectShapeInLayerPanel = (id: string, shiftKey: boolean) => {
+    if (shiftKey) {
+      setSelectedShapeIds(prevIds => 
+        prevIds.includes(id) 
+          ? prevIds.filter(i => i !== id) 
+          : [...prevIds, id]
+      );
+    } else {
+      setSelectedShapeIds([id]);
+    }
+  };
+
   return (
     <div className="flex flex-col h-screen bg-muted/40 font-sans" onDrop={handleDrop} onDragOver={(e) => e.preventDefault()}>
       <AppHeader onExport={handleExport} canvasView={canvasView} onViewChange={handleViewChange} />
@@ -131,10 +150,14 @@ export function VectorEditor() {
             onViewChange={handleViewChange}
           />
         </main>
-        <PropertiesPanel
-          selectedShapes={selectedShapes}
+        <RightSidebar
+          shapes={shapes}
+          selectedShapeIds={selectedShapeIds}
           onShapesUpdate={updateShapes}
+          onSelectShape={handleSelectShapeInLayerPanel}
           onDelete={deleteSelectedShapes}
+          onDuplicate={duplicateSelectedShapes}
+          onReorder={reorderShapes}
         />
       </div>
       {contextMenu && (

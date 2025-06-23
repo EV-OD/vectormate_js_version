@@ -3,6 +3,7 @@
 import { useReducer, useCallback } from 'react';
 import { type Shape } from '@/lib/types';
 import { useToast } from './use-toast';
+import { nanoid } from 'nanoid';
 
 type EditorState = {
   shapes: Shape[];
@@ -16,7 +17,9 @@ type Action =
   | { type: 'SET_SELECTED_SHAPES'; payload: string[] }
   | { type: 'APPLY_BOOLEAN'; payload: { operation: string; shapes: Shape[] } }
   | { type: 'BRING_TO_FRONT'; payload: string[] }
-  | { type: 'SEND_TO_BACK'; payload: string[] };
+  | { type: 'SEND_TO_BACK'; payload: string[] }
+  | { type: 'DUPLICATE_SHAPES'; payload: string[] }
+  | { type: 'REORDER_SHAPES'; payload: { fromId: string; toId: string } };
 
 function editorReducer(state: EditorState, action: Action): EditorState {
   switch (action.type) {
@@ -60,6 +63,36 @@ function editorReducer(state: EditorState, action: Action): EditorState {
       const others = state.shapes.filter(s => !action.payload.includes(s.id));
       return { ...state, shapes: [...toMove, ...others] };
     }
+    case 'DUPLICATE_SHAPES': {
+      const shapesToDuplicate = state.shapes.filter(s => action.payload.includes(s.id));
+      if (shapesToDuplicate.length === 0) return state;
+
+      const newShapes = shapesToDuplicate.map(shape => ({
+        ...shape,
+        id: nanoid(),
+        x: shape.x + 10,
+        y: shape.y + 10,
+      }));
+
+      return {
+        ...state,
+        shapes: [...state.shapes, ...newShapes],
+        selectedShapeIds: newShapes.map(s => s.id),
+      };
+    }
+    case 'REORDER_SHAPES': {
+      const { fromId, toId } = action.payload;
+      const shapes = [...state.shapes];
+      const fromIndex = shapes.findIndex(s => s.id === fromId);
+      const toIndex = shapes.findIndex(s => s.id === toId);
+
+      if (fromIndex === -1 || toIndex === -1) return state;
+      
+      const [movedItem] = shapes.splice(fromIndex, 1);
+      shapes.splice(toIndex, 0, movedItem);
+
+      return { ...state, shapes };
+    }
     default:
       return state;
   }
@@ -95,6 +128,16 @@ export function useEditorState() {
           dispatch({ type: 'SEND_TO_BACK', payload: ids });
       }
   }, []);
+  
+  const duplicateShapes = useCallback((ids: string[]) => {
+    if (ids.length > 0) {
+      dispatch({ type: 'DUPLICATE_SHAPES', payload: ids });
+    }
+  }, []);
+  
+  const reorderShapes = useCallback((fromId: string, toId: string) => {
+    dispatch({ type: 'REORDER_SHAPES', payload: { fromId, toId } });
+  }, []);
 
   const applyBooleanOperation = (operation: 'union' | 'subtract' | 'intersect' | 'exclude') => {
     if (state.selectedShapeIds.length < 2) {
@@ -113,18 +156,17 @@ export function useEditorState() {
     });
   };
   
-  const selectedShapes = state.shapes.filter(s => state.selectedShapeIds.includes(s.id));
-
   return {
     shapes: state.shapes,
     selectedShapeIds: state.selectedShapeIds,
-    selectedShapes,
     addShape,
     updateShapes,
     setSelectedShapeIds,
     deleteShapesByIds,
     bringToFront,
     sendToBack,
-    applyBooleanOperation
+    applyBooleanOperation,
+    duplicateShapes,
+    reorderShapes
   };
 }
