@@ -52,52 +52,82 @@ function shapeToMartinezPolygon(shape: Shape): MartinezPolygon | null {
     return [rotatedPoints];
 }
 
-export function union(shape1: Shape, shape2: Shape): PolygonShape | null {
+function resultToShape(
+    result: MartinezMultiPolygon | null, 
+    fallbackShape: Shape,
+    name: string
+): PolygonShape | null {
+    if (!result || result.length === 0 || result[0].length === 0) return null;
+    
+    const resultPolygon = result[0][0];
+
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    resultPolygon.forEach(([px, py]) => {
+        minX = Math.min(minX, px);
+        minY = Math.min(minY, py);
+        maxX = Math.max(maxX, px);
+        maxY = Math.max(maxY, py);
+    });
+
+    const newBounds = {
+        x: minX,
+        y: minY,
+        width: maxX - minX,
+        height: maxY - minY,
+    };
+
+    const relativePoints = resultPolygon.map(([px, py]) => [px - newBounds.x, py - newBounds.y]);
+
+    const newShape: PolygonShape = {
+        id: nanoid(),
+        type: 'polygon',
+        name,
+        ...newBounds,
+        rotation: 0,
+        fill: fallbackShape.fill || '#cccccc',
+        stroke: fallbackShape.stroke,
+        strokeWidth: fallbackShape.strokeWidth || 0,
+        opacity: fallbackShape.opacity || 1,
+        points: relativePoints.map(p => p.join(',')).join(' '),
+    };
+
+    return newShape;
+}
+
+
+function performOperation(
+    shape1: Shape, 
+    shape2: Shape, 
+    operation: (a: MartinezPolygon, b: MartinezPolygon) => MartinezMultiPolygon | null,
+    name: string
+): PolygonShape | null {
     const poly1 = shapeToMartinezPolygon(shape1);
     const poly2 = shapeToMartinezPolygon(shape2);
 
     if (!poly1 || !poly2) return null;
 
     try {
-        const result = martinez.union(poly1, poly2) as MartinezMultiPolygon | null;
-        if (!result || result.length === 0 || result[0].length === 0) return null;
-
-        const resultPolygon = result[0][0];
-
-        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-        resultPolygon.forEach(([px, py]) => {
-            minX = Math.min(minX, px);
-            minY = Math.min(minY, py);
-            maxX = Math.max(maxX, px);
-            maxY = Math.max(maxY, py);
-        });
-
-        const newBounds = {
-            x: minX,
-            y: minY,
-            width: maxX - minX,
-            height: maxY - minY,
-        };
-
-        const relativePoints = resultPolygon.map(([px, py]) => [px - newBounds.x, py - newBounds.y]);
-
-        const newShape: PolygonShape = {
-            id: nanoid(),
-            type: 'polygon',
-            name: 'Union',
-            ...newBounds,
-            rotation: 0,
-            fill: shape1.fill || shape2.fill || '#cccccc',
-            stroke: shape1.stroke || shape2.stroke,
-            strokeWidth: shape1.strokeWidth || 0,
-            opacity: shape1.opacity || 1,
-            points: relativePoints.map(p => p.join(',')).join(' '),
-        };
-
-        return newShape;
-
+        const result = operation(poly1, poly2);
+        return resultToShape(result, shape1, name);
     } catch (e) {
-        console.error("Boolean operation failed:", e);
+        console.error(`Boolean operation '${name}' failed:`, e);
         return null;
     }
+}
+
+
+export function union(shape1: Shape, shape2: Shape): PolygonShape | null {
+    return performOperation(shape1, shape2, martinez.union, 'Union');
+}
+
+export function subtract(subjectShape: Shape, clipperShape: Shape): PolygonShape | null {
+    return performOperation(subjectShape, clipperShape, martinez.diff, 'Subtract');
+}
+
+export function intersect(shape1: Shape, shape2: Shape): PolygonShape | null {
+    return performOperation(shape1, shape2, martinez.intersection, 'Intersect');
+}
+
+export function exclude(shape1: Shape, shape2: Shape): PolygonShape | null {
+    return performOperation(shape1, shape2, martinez.xor, 'Exclude');
 }

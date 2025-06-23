@@ -1,10 +1,11 @@
+
 'use client';
 
 import { useReducer, useCallback } from 'react';
 import { type Shape, PolygonShape } from '@/lib/types';
 import { useToast } from './use-toast';
 import { nanoid } from 'nanoid';
-import { union } from '@/lib/boolean-operations';
+import { union, subtract, intersect, exclude } from '@/lib/boolean-operations';
 
 const HISTORY_LIMIT = 20;
 
@@ -202,7 +203,7 @@ export function useEditorState() {
     if (state.present.selectedShapeIds.length < 2) {
       toast({
         title: "Selection Error",
-        description: "Please select at least two shapes to perform a boolean operation.",
+        description: "Please select at least two shapes for a boolean operation.",
         variant: "destructive",
       });
       return;
@@ -220,6 +221,8 @@ export function useEditorState() {
         return;
     }
 
+    // Operations are performed on the two bottom-most (in z-order) selected shapes.
+    // For subtract, shape2 (the one higher in the stack) will cut shape1.
     const [shape1, shape2] = compatibleShapes;
 
     let newShape: PolygonShape | null = null;
@@ -227,12 +230,15 @@ export function useEditorState() {
         case 'union':
             newShape = union(shape1, shape2);
             break;
-        default:
-             toast({
-                title: `${operation.charAt(0).toUpperCase() + operation.slice(1)} Not Implemented`,
-                description: "This operation is not yet available.",
-            });
-            return;
+        case 'subtract':
+            newShape = subtract(shape1, shape2);
+            break;
+        case 'intersect':
+            newShape = intersect(shape1, shape2);
+            break;
+        case 'exclude':
+            newShape = exclude(shape1, shape2);
+            break;
     }
     
     if (newShape) {
@@ -251,7 +257,7 @@ export function useEditorState() {
     } else {
          toast({
             title: "Operation Failed",
-            description: "The boolean operation could not be completed.",
+            description: "The boolean operation could not be completed. Make sure shapes are overlapping.",
             variant: "destructive"
         });
     }
