@@ -4,58 +4,62 @@
 import { type Shape, PolygonShape } from './types';
 import { nanoid } from 'nanoid';
 // Use `type` to ensure these are only for type checking and don't cause runtime import issues.
-import { type Clipper2ZFactoryFunction, type MainModule } from 'clipper2-wasm';
+import { type Clipper2ZFactoryFunction, type MainModule } from 'clipper2-wasm/dist/clipper2z';
 import * as _Clipper2ZFactory from 'clipper2-wasm/dist/umd/clipper2z';
 
-const Clipper2ZFactory: Clipper2ZFactoryFunction = _Clipper2ZFactory;
+// Correctly access the factory function, handling default export for UMD modules.
+const Clipper2ZFactory: Clipper2ZFactoryFunction = (_Clipper2ZFactory as any).default || _Clipper2ZFactory;
 
 let wasmModule: MainModule | null = null;
+let wasmReadyPromise: Promise<void> | null = null;
 
-// A single promise to ensure we only initialize the module once.
-const wasmReady = new Promise<void>((resolve, reject) => {
-  // We only want to run this in the browser, not during server-side rendering.
-  if (typeof window === 'undefined') {
-    // On the server, we resolve without a module. Operations will gracefully fail.
-    return resolve();
-  }
-  Clipper2ZFactory({
-    // This tells the factory where to find the .wasm file. It must be in the /public folder.
-    locateFile: () => '/clipper2z.wasm',
-  }).then((module: MainModule) => {
-    wasmModule = module;
-    resolve();
-  }).catch(reject);
-});
+// Function to initialize WASM, ensuring it only runs once.
+const initializeWasm = () => {
+    if (wasmReadyPromise) {
+        return wasmReadyPromise;
+    }
+    wasmReadyPromise = new Promise<void>((resolve, reject) => {
+        // Guard against running on the server
+        if (typeof window === 'undefined') {
+            return resolve(); // Resolve without a module on SSR
+        }
+        Clipper2ZFactory({
+            locateFile: () => '/clipper2z.wasm',
+        }).then((module: MainModule) => {
+            wasmModule = module;
+            resolve();
+        }).catch(reject);
+    });
+    return wasmReadyPromise;
+};
 
 
-function shapeToPoints(shape: Shape): {x: number, y: number}[] {
-    if (!wasmModule) throw new Error("WASM module not initialized");
-
+function shapeToPoints(shape: Shape, wasm: MainModule): InstanceType<MainModule['PointD']>[] {
     const angleRad = shape.rotation * (Math.PI / 180);
     const cos = Math.cos(angleRad);
     const sin = Math.sin(angleRad);
-    // Use the shape's center for rotation calculations
     const cx = shape.x + shape.width / 2;
     const cy = shape.y + shape.height / 2;
 
-    // Helper to rotate a point around the shape's center
-    const transformPoint = (x: number, y: number): {x: number, y: number} => {
+    const transformPoint = (x: number, y: number): InstanceType<MainModule['PointD']> => {
         const rotatedX = (x - cx) * cos - (y - cy) * sin + cx;
         const rotatedY = (x - cx) * sin + (y - cy) * cos + cy;
-        return { x: rotatedX, y: rotatedY };
+        return new wasm.PointD(rotatedX, rotatedY, 0);
     };
+    
+    let points: InstanceType<MainModule['PointD']>[] = [];
 
     switch (shape.type) {
         case 'rectangle':
-            return [
+            points = [
                 transformPoint(shape.x, shape.y),
                 transformPoint(shape.x + shape.width, shape.y),
                 transformPoint(shape.x + shape.width, shape.y + shape.height),
                 transformPoint(shape.x, shape.y + shape.height)
             ];
+            break;
         case 'circle': {
-            const points: {x: number, y: number}[] = [];
-            const numSegments = 32; // A higher number makes a smoother circle
+            const numSegments = 32;
             const rx = shape.width / 2;
             const ry = shape.height / 2;
             const circleCenterX = shape.x + rx;
@@ -66,31 +70,28 @@ function shapeToPoints(shape: Shape): {x: number, y: number}[] {
                 const pointY = circleCenterY + Math.sin(angle) * ry;
                 points.push(transformPoint(pointX, pointY));
             }
-            return points;
+            break;
         }
         case 'polygon': {
-             return (shape as PolygonShape).points.split(' ').map(pStr => {
+             points = (shape as PolygonShape).points.split(' ').map(pStr => {
                 const [px, py] = pStr.split(',').map(Number);
                 const absoluteX = shape.x + px;
                 const absoluteY = shape.y + py;
                 return transformPoint(absoluteX, absoluteY);
             });
+            break;
         }
-        default:
-            return [];
     }
+    return points;
 }
 
-function pathsToShape(paths: InstanceType<MainModule['PathsD']>, fill: string): PolygonShape | null {
-    if (!wasmModule) throw new Error("WASM module not initialized");
-    const { areaOfPathsD, getSinglePath } = wasmModule;
-
-    if (areaOfPathsD(paths) === 0) {
+function pathsToShape(paths: InstanceType<MainModule['PathsD']>, fill: string, wasm: MainModule): PolygonShape | null {
+    if (wasm.areaOfPathsD(paths) === 0) {
         paths.delete();
         return null;
     }
 
-    const path = getSinglePath(paths);
+    const path = wasm.getSinglePath(paths);
     paths.delete();
 
     if (!path || path.size() === 0) {
@@ -130,60 +131,65 @@ function pathsToShape(paths: InstanceType<MainModule['PathsD']>, fill: string): 
     return newShape;
 }
 
-async function performWasmOperation(shape1: Shape, shape2: Shape, opTypeEnum: any): Promise<PolygonShape | null> {
-    await wasmReady;
-    if (!wasmModule) return null;
 
-    const { PointD, PathD, PathsD, FillRule, booleanOp } = wasmModule;
+async function performWasmOperation(shape1: Shape, shape2: Shape, opType: 'union' | 'subtract' | 'intersect' | 'exclude'): Promise<PolygonShape | null> {
+    await initializeWasm();
+    if (!wasmModule) {
+        console.error("WASM module failed to initialize.");
+        return null;
+    }
 
-    const points1_plain = shapeToPoints(shape1);
-    const points2_plain = shapeToPoints(shape2);
+    const opTypeMap = {
+        union: wasmModule.ClipType.Union,
+        subtract: wasmModule.ClipType.Difference,
+        intersect: wasmModule.ClipType.Intersect,
+        exclude: wasmModule.ClipType.Xor
+    };
+
+    const points1_plain = shapeToPoints(shape1, wasmModule);
+    const points2_plain = shapeToPoints(shape2, wasmModule);
 
     if (points1_plain.length === 0 || points2_plain.length === 0) {
         return null;
     }
 
-    const path1 = new PathD();
-    points1_plain.forEach(p => path1.push_back(new PointD(p.x, p.y, 0)));
+    const path1 = new wasmModule.PathD();
+    points1_plain.forEach(p => path1.push_back(p));
+    points1_plain.forEach(p => p.delete()); // clean up points
     
-    const path2 = new PathD();
-    points2_plain.forEach(p => path2.push_back(new PointD(p.x, p.y, 0)));
-    
-    const paths1 = new PathsD();
+    const path2 = new wasmModule.PathD();
+    points2_plain.forEach(p => path2.push_back(p));
+    points2_plain.forEach(p => p.delete()); // clean up points
+
+    const paths1 = new wasmModule.PathsD();
     paths1.push_back(path1);
-    const paths2 = new PathsD();
+    const paths2 = new wasmModule.PathsD();
     paths2.push_back(path2);
+
+    const opTypeEnum = opTypeMap[opType];
+    const fillRule = wasmModule.FillRule.EvenOdd;
     
-    const fillRule = FillRule.EvenOdd;
+    const resultPaths = wasmModule.booleanOp(opTypeEnum, fillRule, paths1, paths2);
     
-    const resultPaths = booleanOp(opTypeEnum, fillRule, paths1, paths2);
-    
+    // IMPORTANT: Clean up the memory allocated by wasm
     paths1.delete();
     paths2.delete();
     
-    return pathsToShape(resultPaths, shape1.fill || '#cccccc');
+    return pathsToShape(resultPaths, shape1.fill || '#cccccc', wasmModule);
 }
 
 export async function union(shape1: Shape, shape2: Shape): Promise<PolygonShape | null> {
-    await wasmReady;
-    if (!wasmModule) return null;
-    return performWasmOperation(shape1, shape2, wasmModule.ClipType.Union);
+    return performWasmOperation(shape1, shape2, 'union');
 }
 
 export async function subtract(subjectShape: Shape, clipperShape: Shape): Promise<PolygonShape | null> {
-    await wasmReady;
-    if (!wasmModule) return null;
-    return performWasmOperation(subjectShape, clipperShape, wasmModule.ClipType.Difference);
+    return performWasmOperation(subjectShape, clipperShape, 'subtract');
 }
 
 export async function intersect(shape1: Shape, shape2: Shape): Promise<PolygonShape | null> {
-    await wasmReady;
-    if (!wasmModule) return null;
-    return performWasmOperation(shape1, shape2, wasmModule.ClipType.Intersect);
+    return performWasmOperation(shape1, shape2, 'intersect');
 }
 
 export async function exclude(shape1: Shape, shape2: Shape): Promise<PolygonShape | null> {
-    await wasmReady;
-    if (!wasmModule) return null;
-    return performWasmOperation(shape1, shape2, wasmModule.ClipType.Xor);
+    return performWasmOperation(shape1, shape2, 'exclude');
 }
