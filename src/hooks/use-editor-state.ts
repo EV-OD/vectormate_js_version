@@ -19,7 +19,7 @@ type Action =
   | { type: 'BRING_TO_FRONT'; payload: string[] }
   | { type: 'SEND_TO_BACK'; payload: string[] }
   | { type: 'DUPLICATE_SHAPES'; payload: string[] }
-  | { type: 'REORDER_SHAPES'; payload: { fromId: string; toId: string } };
+  | { type: 'REORDER_SHAPES'; payload: { fromId: string; toId: string; position: 'top' | 'bottom' } };
 
 function editorReducer(state: EditorState, action: Action): EditorState {
   switch (action.type) {
@@ -81,17 +81,27 @@ function editorReducer(state: EditorState, action: Action): EditorState {
       };
     }
     case 'REORDER_SHAPES': {
-      const { fromId, toId } = action.payload;
-      const shapes = [...state.shapes];
-      const fromIndex = shapes.findIndex(s => s.id === fromId);
-      const toIndex = shapes.findIndex(s => s.id === toId);
-
-      if (fromIndex === -1 || toIndex === -1) return state;
+      const { fromId, toId, position } = action.payload;
+      const reversedShapes = [...state.shapes].reverse();
       
-      const [movedItem] = shapes.splice(fromIndex, 1);
-      shapes.splice(toIndex, 0, movedItem);
+      const fromIndex = reversedShapes.findIndex(s => s.id === fromId);
+      let toIndex = reversedShapes.findIndex(s => s.id === toId);
 
-      return { ...state, shapes };
+      if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return state;
+      
+      const [movedItem] = reversedShapes.splice(fromIndex, 1);
+      
+      if (fromIndex < toIndex) {
+          toIndex--;
+      }
+      
+      if (position === 'top') {
+          reversedShapes.splice(toIndex, 0, movedItem);
+      } else { // 'bottom'
+          reversedShapes.splice(toIndex + 1, 0, movedItem);
+      }
+
+      return { ...state, shapes: reversedShapes.reverse() };
     }
     default:
       return state;
@@ -135,8 +145,8 @@ export function useEditorState() {
     }
   }, []);
   
-  const reorderShapes = useCallback((fromId: string, toId: string) => {
-    dispatch({ type: 'REORDER_SHAPES', payload: { fromId, toId } });
+  const reorderShapes = useCallback((fromId: string, toId: string, position: 'top' | 'bottom') => {
+    dispatch({ type: 'REORDER_SHAPES', payload: { fromId, toId, position } });
   }, []);
 
   const applyBooleanOperation = (operation: 'union' | 'subtract' | 'intersect' | 'exclude') => {

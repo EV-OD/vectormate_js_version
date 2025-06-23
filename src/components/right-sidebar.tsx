@@ -20,7 +20,7 @@ type RightSidebarProps = {
   onSelectShape: (id: string, shiftKey: boolean) => void;
   onDelete: () => void;
   onDuplicate: () => void;
-  onReorder: (fromId: string, toId: string) => void;
+  onReorder: (fromId: string, toId: string, position: 'top' | 'bottom') => void;
 };
 
 export function RightSidebar({ 
