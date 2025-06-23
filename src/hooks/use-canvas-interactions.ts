@@ -3,7 +3,7 @@
 import React, { useRef, useState, useCallback } from 'react';
 import { type Shape, type Tool, type InteractionState, type Handle, PolygonShape, ShapeType, CanvasView, ImageShape, SVGShape } from '@/lib/types';
 import { nanoid } from 'nanoid';
-import { getBounds, getHexagonPoints } from '@/lib/geometry';
+import { getBounds, getHexagonPoints, scalePolygonPoints } from '@/lib/geometry';
 import { SNAP_THRESHOLD } from '@/lib/constants';
 
 type UseCanvasInteractionsProps = {
@@ -356,7 +356,13 @@ export function useCanvasInteractions({
                 
                 const updatedShape: Shape = { ...initialShape, ...newBounds };
                  if (updatedShape.type === 'polygon') {
-                    updatedShape.points = getHexagonPoints(updatedShape.width, updatedShape.height);
+                    updatedShape.points = scalePolygonPoints(
+                        (initialShape as PolygonShape).points,
+                        initialShape.width,
+                        initialShape.height,
+                        updatedShape.width,
+                        updatedShape.height
+                    );
                 }
                 updateShapes([updatedShape]);
 
@@ -402,7 +408,13 @@ export function useCanvasInteractions({
                 
                 const updatedShape: Shape = { ...initialShape, x: newX, y: newY, width: newWidth, height: newHeight };
                 if (updatedShape.type === 'polygon') {
-                    updatedShape.points = getHexagonPoints(newWidth, newHeight);
+                     updatedShape.points = scalePolygonPoints(
+                        (initialShape as PolygonShape).points,
+                        initialShape.width,
+                        initialShape.height,
+                        newWidth,
+                        newHeight
+                    );
                 }
                 updateShapes([updatedShape]);
             }

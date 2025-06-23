@@ -14,6 +14,27 @@ export function getHexagonPoints(width: number, height: number): string {
     return points.map(p => p.map(c => Math.round(c)).join(',')).join(' ');
 }
 
+export function scalePolygonPoints(pointsStr: string, oldWidth: number, oldHeight: number, newWidth: number, newHeight: number): string {
+    if (!pointsStr || oldWidth === 0 || oldHeight === 0) {
+        return pointsStr;
+    }
+
+    const scaleX = newWidth / oldWidth;
+    const scaleY = newHeight / oldHeight;
+
+    const points = pointsStr.split(' ').map(p => {
+        const [x, y] = p.split(',').map(Number);
+        return { x, y };
+    });
+
+    const scaledPoints = points.map(p => ({
+        x: p.x * scaleX,
+        y: p.y * scaleY
+    }));
+
+    return scaledPoints.map(p => `${p.x},${p.y}`).join(' ');
+}
+
 export const getBounds = (shapes: Shape[]) => {
     if (shapes.length === 0) return { x: 0, y: 0, width: 0, height: 0 };
 

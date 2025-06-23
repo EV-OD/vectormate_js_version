@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { type Shape, RectangleShape, ImageShape, SVGShape } from '@/lib/types';
+import { type Shape, RectangleShape, ImageShape, SVGShape, PolygonShape } from '@/lib/types';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LayersPanel } from './layers-panel';
 import { ScrollArea } from './ui/scroll-area';
 import { Textarea } from './ui/textarea';
+import { scalePolygonPoints } from '@/lib/geometry';
 
 type RightSidebarProps = {
   shapes: Shape[];
@@ -65,6 +66,15 @@ export function RightSidebar({
       if(numericProps.includes(prop as string)) {
         const numValue = Number(value);
         if (!isNaN(numValue)) {
+            if ((prop === 'width' || prop === 'height') && newShape.type === 'polygon') {
+                const oldWidth = newShape.width;
+                const oldHeight = newShape.height;
+                const newWidth = prop === 'width' ? numValue : oldWidth;
+                const newHeight = prop === 'height' ? numValue : oldHeight;
+
+                const originalPoints = (s as PolygonShape).points;
+                (newShape as PolygonShape).points = scalePolygonPoints(originalPoints, oldWidth, oldHeight, newWidth, newHeight);
+            }
             (newShape as any)[prop] = numValue;
         }
       } else {
