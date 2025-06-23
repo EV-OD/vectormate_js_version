@@ -106,6 +106,9 @@ export function RightSidebar({
         }
       } else {
         (newShape as any)[prop] = value;
+        if (newShape.type === 'svg' && prop === 'svgString' && typeof value === 'string') {
+          newShape.dataUrl = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(value)))}`;
+        }
       }
       
       if (newShape.type === 'text' && ['text', 'fontSize', 'fontFamily', 'fontWeight'].includes(prop as string)) {
@@ -226,7 +229,7 @@ export function RightSidebar({
                                 {isSingleSvg && (
                                     <div>
                                         <Label htmlFor="svg-string">SVG Content</Label>
-                                        <Textarea id="svg-string" value={(shape as SVGShape).svgString || ''} onChange={e => handlePropertyChange('svgString', e.target.value)} onFocus={handleInteractionStart} onBlur={handleInteractionEnd} rows={6}/>
+                                        <Textarea id="svg-string" value={(shape as SVGShape).svgString || ''} onChange={e => handlePropertyChange('svgString', e.target.value, true)} onFocus={handleInteractionStart} onBlur={handleInteractionEnd} rows={6}/>
                                     </div>
                                 )}
                                 {isSinglePath && (

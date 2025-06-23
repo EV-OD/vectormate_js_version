@@ -45,6 +45,7 @@ export interface ImageShape extends BaseShape {
 export interface SVGShape extends BaseShape {
   type: 'svg';
   svgString: string;
+  dataUrl?: string;
 }
 
 export interface PathShape extends BaseShape {

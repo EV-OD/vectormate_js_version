@@ -176,11 +176,13 @@ export function VectorEditor() {
         reader.onload = (event) => {
             const svgString = event.target?.result as string;
             const width = 200, height = 200;
+            const dataUrl = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svgString)))}`;
             const newShape: SVGShape = {
                 id: nanoid(),
                 type: 'svg',
                 name: file.name,
                 svgString,
+                dataUrl,
                 x: center.x - width / 2,
                 y: center.y - height / 2,
                 width,
