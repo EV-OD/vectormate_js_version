@@ -47,13 +47,13 @@ export interface SVGShape extends BaseShape {
 
 export type Shape = RectangleShape | CircleShape | PolygonShape | LineShape | ImageShape | SVGShape;
 
-export type Tool = 'select' | ShapeType;
+export type Tool = 'select' | 'rectangle' | 'circle' | 'polygon' | 'line';
 
 export type Handle = 'n' | 's' | 'e' | 'w' | 'nw' | 'ne' | 'sw' | 'se' | 'rotate';
 
 export type InteractionState =
   | { type: 'none' }
-  | { type: 'drawing'; shapeType: ShapeType; startX: number; startY: number; currentShapeId: string; }
+  | { type: 'drawing'; shapeType: Tool; startX: number; startY: number; currentShapeId: string; }
   | { type: 'moving'; startX: number; startY: number; initialShapes: Shape[] }
   | { type: 'resizing'; handle: Handle; startX: number; startY: number; initialShapes: Shape[]; aspectRatios: number[] }
   | { type: 'rotating'; startX: number; startY: number; initialShapes: Shape[]; center: { x: number; y: number } }

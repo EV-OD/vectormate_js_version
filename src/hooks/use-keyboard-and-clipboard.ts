@@ -1,12 +1,12 @@
 'use client';
 import { useEffect, useState, useCallback } from 'react';
-import { type Shape, type Tool, type InteractionState } from '@/lib/types';
+import { type Shape, type Tool, type InteractionState, type CanvasView, ImageShape } from '@/lib/types';
 import { nanoid } from 'nanoid';
 import { useToast } from './use-toast';
 
 type useKeyboardAndClipboardProps = {
     selectedShapes: Shape[];
-    canvasViewScale: number;
+    canvasView: CanvasView;
     addShapes: (shapes: Shape[]) => void;
     deleteSelectedShapes: () => void;
     setActiveTool: (tool: Tool) => void;
@@ -17,7 +17,7 @@ type useKeyboardAndClipboardProps = {
 
 export function useKeyboardAndClipboard({
   selectedShapes,
-  canvasViewScale,
+  canvasView,
   addShapes,
   deleteSelectedShapes,
   setActiveTool,
@@ -40,13 +40,13 @@ export function useKeyboardAndClipboard({
             const newShapes = clipboard.map(shape => ({
                 ...shape,
                 id: nanoid(),
-                x: shape.x + 10 / canvasViewScale,
-                y: shape.y + 10 / canvasViewScale,
+                x: shape.x + 10 / canvasView.scale,
+                y: shape.y + 10 / canvasView.scale,
             }));
             addShapes(newShapes);
             setClipboard(newShapes);
         }
-    }, [clipboard, addShapes, canvasViewScale]);
+    }, [clipboard, addShapes, canvasView.scale]);
 
     useEffect(() => {
       const handleKeyDown = (e: KeyboardEvent) => {
@@ -65,10 +65,6 @@ export function useKeyboardAndClipboard({
             case 'c':
               e.preventDefault();
               handleCopy();
-              return;
-            case 'v':
-              e.preventDefault();
-              handlePaste();
               return;
             case 'z':
               e.preventDefault();
@@ -98,8 +94,67 @@ export function useKeyboardAndClipboard({
       };
       window.addEventListener('keydown', handleKeyDown);
       return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [deleteSelectedShapes, handleCopy, handlePaste, setActiveTool, setInteractionState, undo, redo]);
+    }, [deleteSelectedShapes, handleCopy, setActiveTool, setInteractionState, undo, redo]);
     
+    useEffect(() => {
+      const handlePasteEvent = (event: ClipboardEvent) => {
+        if ((event.target as HTMLElement).closest('input, textarea, [contenteditable=true]')) {
+          return;
+        }
+        
+        const items = event.clipboardData?.items;
+        if (!items) return;
+
+        for (const item of items) {
+          if (item.type.startsWith('image/')) {
+            const blob = item.getAsFile();
+            if (blob) {
+              event.preventDefault();
+              
+              const reader = new FileReader();
+              reader.onload = (readEvent) => {
+                  const dataUrl = readEvent.target?.result as string;
+                  const img = new window.Image();
+                  img.onload = () => {
+                      const center = {
+                        x: -canvasView.pan.x / canvasView.scale,
+                        y: -canvasView.pan.y / canvasView.scale
+                      };
+
+                      const newShape: ImageShape = {
+                          id: nanoid(),
+                          type: 'image',
+                          name: 'Pasted Image',
+                          href: dataUrl,
+                          x: center.x,
+                          y: center.y,
+                          width: img.naturalWidth,
+                          height: img.naturalHeight,
+                          rotation: 0,
+                          opacity: 1,
+                      };
+                      addShapes([newShape]);
+                  };
+                  img.src = dataUrl;
+              };
+              reader.readAsDataURL(blob);
+              return;
+            }
+          }
+        }
+        
+        if (clipboard.length > 0) {
+          event.preventDefault();
+          handlePaste();
+        }
+      };
+
+      window.addEventListener('paste', handlePasteEvent);
+      return () => {
+        window.removeEventListener('paste', handlePasteEvent);
+      }
+    }, [clipboard, handlePaste, addShapes, canvasView]);
+
     return {
         clipboard,
         handleCopy,

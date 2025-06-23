@@ -34,6 +34,8 @@ type ToolbarProps = {
   onToolSelect: (tool: Tool) => void;
   onBooleanOperation: (operation: 'union' | 'subtract' | 'intersect' | 'exclude') => void;
   disabled: boolean;
+  onAddImage: () => void;
+  onAddSvg: () => void;
 };
 
 const selectTool = { name: 'select' as const, icon: MousePointer, tooltip: 'Select (V)' };
@@ -57,7 +59,14 @@ const props = [
   { name: 'heart', icon: Heart, tooltip: 'Heart Prop' },
 ];
 
-export function Toolbar({ activeTool, onToolSelect, onBooleanOperation, disabled }: ToolbarProps) {
+export function Toolbar({ 
+  activeTool, 
+  onToolSelect, 
+  onBooleanOperation, 
+  disabled,
+  onAddImage,
+  onAddSvg,
+}: ToolbarProps) {
   const handleDragStart = (e: React.DragEvent<HTMLButtonElement>, propType: string) => {
     e.dataTransfer.setData("application/vectormate-prop", propType);
   };
@@ -153,31 +162,29 @@ export function Toolbar({ activeTool, onToolSelect, onBooleanOperation, disabled
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
-                variant={activeTool === 'image' ? 'secondary' : 'ghost'}
+                variant='ghost'
                 size="icon"
-                onClick={() => onToolSelect('image')}
-                className={cn(activeTool === 'image' && 'text-primary ring-2 ring-primary/50')}
+                onClick={onAddImage}
               >
                 <Image className="w-5 h-5" />
               </Button>
             </TooltipTrigger>
             <TooltipContent side="right">
-              <p>Image</p>
+              <p>Add Image</p>
             </TooltipContent>
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
-                variant={activeTool === 'svg' ? 'secondary' : 'ghost'}
+                variant='ghost'
                 size="icon"
-                onClick={() => onToolSelect('svg')}
-                className={cn(activeTool === 'svg' && 'text-primary ring-2 ring-primary/50')}
+                onClick={onAddSvg}
               >
                 <FileCode className="w-5 h-5" />
               </Button>
             </TooltipTrigger>
             <TooltipContent side="right">
-              <p>SVG</p>
+              <p>Add SVG</p>
             </TooltipContent>
           </Tooltip>
         </div>

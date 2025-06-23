@@ -164,17 +164,13 @@ export function useCanvasInteractions({
         const shapeName = activeTool.charAt(0).toUpperCase() + activeTool.slice(1);
         const commonProps = { id: nanoid(), name: shapeName, x, y, width: 0, height: 0, rotation: 0, opacity: 1 };
         let newShape: Shape;
+        
         if(activeTool === 'polygon') {
             newShape = { ...commonProps, type: 'polygon', points: '', fill: '#cccccc', strokeWidth: 0 };
         } else if (activeTool === 'line') {
             newShape = { ...commonProps, type: 'line', stroke: '#000000', strokeWidth: 2 };
-        } else if (activeTool === 'image') {
-            newShape = { ...commonProps, type: 'image', href: 'https://placehold.co/200x200.png' };
-        } else if (activeTool === 'svg') {
-            newShape = { ...commonProps, type: 'svg', svgString: '<rect x="0" y="0" width="100" height="100" fill="cyan" />' };
-        }
-        else {
-            newShape = { ...commonProps, type: activeTool as Exclude<ShapeType, 'polygon' | 'line' | 'image' | 'svg'>, fill: '#cccccc', strokeWidth: 0 };
+        } else {
+            newShape = { ...commonProps, type: activeTool as 'rectangle' | 'circle', fill: '#cccccc', strokeWidth: 0 };
         }
       addShape(newShape);
       setInteractionState({ type: 'drawing', shapeType: activeTool, startX: x, startY: y, currentShapeId: newShape.id });

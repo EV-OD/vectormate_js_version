@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { AppHeader } from '@/components/header';
 import { Toolbar } from '@/components/toolbar';
 import { Canvas } from '@/components/canvas';
 import { RightSidebar } from '@/components/right-sidebar';
-import { type Shape, type Tool, type InteractionState, PolygonShape, type CanvasView } from '@/lib/types';
+import { type Shape, type Tool, type InteractionState, PolygonShape, type CanvasView, ImageShape, SVGShape } from '@/lib/types';
 import { exportToSvg, exportToJpeg } from '@/lib/export';
 import { ContextMenu } from './context-menu';
 import { useEditorState } from '@/hooks/use-editor-state';
@@ -48,6 +48,10 @@ export function VectorEditor() {
     pan: { x: 0, y: 0 },
   });
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadType, setUploadType] = useState<'image' | 'svg' | null>(null);
+
+
   const handleViewChange = useCallback((viewUpdate: Partial<CanvasView>) => {
     setCanvasView(prev => ({ ...prev, ...viewUpdate }));
   }, []);
@@ -64,7 +68,7 @@ export function VectorEditor() {
 
   const { clipboard, handleCopy, handlePaste } = useKeyboardAndClipboard({
     selectedShapes,
-    canvasViewScale: canvasView.scale,
+    canvasView,
     addShapes,
     deleteSelectedShapes,
     setActiveTool,
@@ -146,11 +150,98 @@ export function VectorEditor() {
     }
   }, [updateShapes, commit]);
 
+  const getCanvasCenter = () => {
+    const canvasEl = document.getElementById('vector-canvas');
+    if (!canvasEl) return { x: 0, y: 0 };
+    const rect = canvasEl.getBoundingClientRect();
+    const centerX = (rect.width / 2 - canvasView.pan.x) / canvasView.scale;
+    const centerY = (rect.height / 2 - canvasView.pan.y) / canvasView.scale;
+    return { x: centerX, y: centerY };
+  }
+
+  const handleImageUpload = () => {
+    setUploadType('image');
+    if (fileInputRef.current) {
+        fileInputRef.current.accept = 'image/*';
+        fileInputRef.current.click();
+    }
+  };
+
+  const handleSvgUpload = () => {
+      setUploadType('svg');
+      if (fileInputRef.current) {
+          fileInputRef.current.accept = '.svg, image/svg+xml';
+          fileInputRef.current.click();
+      }
+  };
+
+  const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const center = getCanvasCenter();
+    const reader = new FileReader();
+
+    if (uploadType === 'image') {
+        reader.onload = (event) => {
+            const dataUrl = event.target?.result as string;
+            const img = new window.Image();
+            img.onload = () => {
+                const newShape: ImageShape = {
+                    id: nanoid(),
+                    type: 'image',
+                    name: file.name,
+                    href: dataUrl,
+                    x: center.x - img.naturalWidth / 2,
+                    y: center.y - img.naturalHeight / 2,
+                    width: img.naturalWidth,
+                    height: img.naturalHeight,
+                    rotation: 0,
+                    opacity: 1,
+                };
+                addShape(newShape);
+            };
+            img.src = dataUrl;
+        };
+        reader.readAsDataURL(file);
+    } else if (uploadType === 'svg') {
+        reader.onload = (event) => {
+            const svgString = event.target?.result as string;
+            const width = 200, height = 200;
+            const newShape: SVGShape = {
+                id: nanoid(),
+                type: 'svg',
+                name: file.name,
+                svgString,
+                x: center.x - width / 2,
+                y: center.y - height / 2,
+                width,
+                height,
+                rotation: 0,
+                opacity: 1,
+            };
+            addShape(newShape);
+        };
+        reader.readAsText(file);
+    }
+    
+    if (e.target) e.target.value = '';
+  };
+
+
   return (
     <div className="flex flex-col h-screen bg-muted/40 font-sans" onDrop={handleDrop} onDragOver={(e) => e.preventDefault()}>
+      <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileSelected} />
       <AppHeader onExport={handleExport} canvasView={canvasView} onViewChange={handleViewChange} />
       <div className="flex flex-1 overflow-hidden">
-        <Toolbar activeTool={activeTool} onToolSelect={setActiveTool} onBooleanOperation={applyBooleanOperation} disabled={selectedShapes.length < 2} />
+        <Toolbar 
+          activeTool={activeTool} 
+          onToolSelect={setActiveTool} 
+          onBooleanOperation={applyBooleanOperation} 
+          disabled={selectedShapes.length < 2} 
+          onAddImage={handleImageUpload}
+          onAddSvg={handleSvgUpload}
+        />
         <main className="flex-1 relative bg-background shadow-inner">
           <Canvas
             shapes={shapes}
