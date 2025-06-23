@@ -1,91 +1,36 @@
 'use client';
 
-import React, { useState, useReducer, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { AppHeader } from '@/components/header';
 import { Toolbar } from '@/components/toolbar';
 import { Canvas } from '@/components/canvas';
 import { PropertiesPanel } from '@/components/properties-panel';
 import { type Shape, type Tool, type InteractionState, PolygonShape, type CanvasView } from '@/lib/types';
 import { exportToSvg, exportToJpeg } from '@/lib/export';
-import { useToast } from '@/hooks/use-toast';
-import { nanoid } from 'nanoid';
 import { ContextMenu } from './context-menu';
-
-type EditorState = {
-  shapes: Shape[];
-  selectedShapeIds: string[];
-};
-
-type Action =
-  | { type: 'ADD_SHAPE'; payload: Shape }
-  | { type: 'UPDATE_SHAPES'; payload: Shape[] }
-  | { type: 'DELETE_SHAPES'; payload: string[] }
-  | { type: 'SET_SELECTED_SHAPES'; payload: string[] }
-  | { type: 'APPLY_BOOLEAN'; payload: { operation: string; shapes: Shape[] } }
-  | { type: 'BRING_TO_FRONT'; payload: string[] }
-  | { type: 'SEND_TO_BACK'; payload: string[] };
-
-function editorReducer(state: EditorState, action: Action): EditorState {
-  switch (action.type) {
-    case 'ADD_SHAPE':
-      return { ...state, shapes: [...state.shapes, action.payload] };
-    case 'UPDATE_SHAPES':
-        return {
-            ...state,
-            shapes: state.shapes.map(s => {
-                const updated = action.payload.find(us => us.id === s.id);
-                return updated ? updated : s;
-            }),
-        };
-    case 'DELETE_SHAPES':
-      return {
-        ...state,
-        shapes: state.shapes.filter(s => !action.payload.includes(s.id)),
-        selectedShapeIds: state.selectedShapeIds.filter(id => !action.payload.includes(id)),
-      };
-    case 'SET_SELECTED_SHAPES':
-      return { ...state, selectedShapeIds: action.payload };
-    case 'APPLY_BOOLEAN': {
-      const { shapes, operation } = action.payload;
-      const otherShapes = state.shapes.filter(s => !shapes.map(ss => ss.id).includes(s.id));
-      // Placeholder logic for boolean ops.
-      if (shapes.length < 2) return state;
-      const [shape1] = shapes;
-      
-      return {
-        ...state,
-        shapes: [...otherShapes, shape1],
-        selectedShapeIds: [shape1.id],
-      }
-    }
-    case 'BRING_TO_FRONT': {
-      const toMove = state.shapes.filter(s => action.payload.includes(s.id));
-      const others = state.shapes.filter(s => !action.payload.includes(s.id));
-      return { ...state, shapes: [...others, ...toMove] };
-    }
-    case 'SEND_TO_BACK': {
-      const toMove = state.shapes.filter(s => action.payload.includes(s.id));
-      const others = state.shapes.filter(s => !action.payload.includes(s.id));
-      return { ...state, shapes: [...toMove, ...others] };
-    }
-    default:
-      return state;
-  }
-}
-
-
-const initialState: EditorState = {
-  shapes: [],
-  selectedShapeIds: [],
-};
+import { useEditorState } from '@/hooks/use-editor-state';
+import { useKeyboardAndClipboard } from '@/hooks/use-keyboard-and-clipboard';
+import { getHexagonPoints } from '@/lib/geometry';
+import { nanoid } from 'nanoid';
 
 export function VectorEditor() {
-  const [state, dispatch] = useReducer(editorReducer, initialState);
+  const {
+    shapes,
+    selectedShapeIds,
+    selectedShapes,
+    addShape,
+    updateShapes,
+    setSelectedShapeIds,
+    deleteShapesByIds,
+    bringToFront,
+    sendToBack,
+    applyBooleanOperation
+  } = useEditorState();
+  
   const [activeTool, setActiveTool] = useState<Tool>('select');
   const [interactionState, setInteractionState] = useState<InteractionState>({ type: 'none' });
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; shapeId: string } | null>(null);
-  const [clipboard, setClipboard] = useState<Shape[]>([]);
-  const { toast } = useToast();
+  
   const [canvasView, setCanvasView] = useState<CanvasView>({
     background: 'solid',
     gridSize: 20,
@@ -99,81 +44,30 @@ export function VectorEditor() {
     setCanvasView(prev => ({ ...prev, ...viewUpdate }));
   }, []);
 
+  const deleteSelectedShapes = useCallback(() => {
+    deleteShapesByIds(selectedShapeIds);
+  }, [deleteShapesByIds, selectedShapeIds]);
+
+  const { clipboard, handleCopy, handlePaste } = useKeyboardAndClipboard({
+    selectedShapes,
+    canvasViewScale: canvasView.scale,
+    addShape,
+    setSelectedShapeIds,
+    deleteSelectedShapes,
+    setActiveTool,
+    setInteractionState
+  });
+
   const handleExport = (format: 'svg' | 'jpeg') => {
     const canvasEl = document.getElementById('vector-canvas');
     if (!canvasEl) return;
     const { width, height } = canvasEl.getBoundingClientRect();
 
     if (format === 'svg') {
-      exportToSvg(state.shapes, width, height, canvasView);
+      exportToSvg(shapes, width, height, canvasView);
     } else {
-      exportToJpeg(state.shapes, width, height, canvasView);
+      exportToJpeg(shapes, width, height, canvasView);
     }
-  };
-  
-  const addShape = useCallback((shape: Shape) => dispatch({ type: 'ADD_SHAPE', payload: shape }), []);
-  
-  const updateShapes = useCallback((updatedShapes: Shape[]) => dispatch({ type: 'UPDATE_SHAPES', payload: updatedShapes }), []);
-
-  const setSelectedShapeIds = useCallback((ids: string[]) => dispatch({ type: 'SET_SELECTED_SHAPES', payload: ids }), []);
-
-  const deleteSelectedShapes = useCallback(() => {
-    if (state.selectedShapeIds.length > 0) {
-      dispatch({ type: 'DELETE_SHAPES', payload: state.selectedShapeIds });
-    }
-  }, [state.selectedShapeIds]);
-
-  const selectedShapes = state.shapes.filter(s => state.selectedShapeIds.includes(s.id));
-
-  const handleCopy = useCallback(() => {
-      if (selectedShapes.length > 0) {
-          setClipboard(selectedShapes);
-          toast({ title: `${selectedShapes.length} item(s) copied to clipboard.` });
-      }
-  }, [selectedShapes, toast]);
-
-  const handlePaste = useCallback(() => {
-      if (clipboard.length > 0) {
-          const newShapes = clipboard.map(shape => ({
-              ...shape,
-              id: nanoid(),
-              x: shape.x + 10 / canvasView.scale,
-              y: shape.y + 10 / canvasView.scale,
-          }));
-          newShapes.forEach(addShape);
-          setSelectedShapeIds(newShapes.map(s => s.id));
-          setClipboard(newShapes);
-      }
-  }, [clipboard, addShape, setSelectedShapeIds, canvasView.scale]);
-
-  const bringToFront = useCallback(() => {
-      if (state.selectedShapeIds.length > 0) {
-          dispatch({ type: 'BRING_TO_FRONT', payload: state.selectedShapeIds });
-      }
-  }, [state.selectedShapeIds]);
-
-  const sendToBack = useCallback(() => {
-      if (state.selectedShapeIds.length > 0) {
-          dispatch({ type: 'SEND_TO_BACK', payload: state.selectedShapeIds });
-      }
-  }, [state.selectedShapeIds]);
-
-  const applyBooleanOperation = (operation: 'union' | 'subtract' | 'intersect' | 'exclude') => {
-    if (state.selectedShapeIds.length < 2) {
-      toast({
-        title: "Selection Error",
-        description: "Please select at least two shapes to perform a boolean operation.",
-        variant: "destructive",
-      });
-      return;
-    }
-    const selectedShapes = state.shapes.filter(s => state.selectedShapeIds.includes(s.id));
-    // Placeholder logic for boolean operation
-    dispatch({ type: 'APPLY_BOOLEAN', payload: { operation, shapes: selectedShapes } });
-    toast({
-      title: `${operation.charAt(0).toUpperCase() + operation.slice(1)} Applied`,
-      description: "This is a placeholder for a real boolean operation.",
-    });
   };
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
@@ -203,57 +97,18 @@ export function VectorEditor() {
         addProp({
             type: 'polygon',
             x: x - 50, y: y - 50, width: 100, height: 100, rotation: 0,
-            fill: '#FFD700', opacity: 1,
+            fill: '#FFD700', opacity: 1, strokeWidth: 0,
             points: "50,0 61,35 98,35 68,57 79,91 50,70 21,91 32,57 2,35 39,35"
         });
     } else if (propType === 'heart') {
         addProp({
             type: 'polygon',
             x: x - 50, y: y - 50, width: 100, height: 90, rotation: 0,
-            fill: '#E31B23', opacity: 1,
+            fill: '#E31B23', opacity: 1, strokeWidth: 0,
             points: "50,90 20,60 0,35 15,10 40,0 50,15 60,0 85,10 100,35 80,60"
         });
     }
   };
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.target as HTMLElement).closest('input, textarea, [contenteditable=true]')) {
-        return;
-      }
-      
-      if (e.metaKey || e.ctrlKey) {
-        switch(e.key.toLowerCase()) {
-          case 'c':
-            e.preventDefault();
-            handleCopy();
-            return;
-          case 'v':
-            e.preventDefault();
-            handlePaste();
-            return;
-        }
-      }
-
-      if ((e.key === 'Backspace' || e.key === 'Delete')) {
-        deleteSelectedShapes();
-      } else if (e.key === 'Escape') {
-        setSelectedShapeIds([]);
-        setActiveTool('select');
-        setInteractionState({ type: 'none' });
-      } else {
-        switch (e.key.toLowerCase()) {
-          case 'v': setActiveTool('select'); break;
-          case 'r': setActiveTool('rectangle'); break;
-          case 'o': setActiveTool('circle'); break;
-          case 'p': setActiveTool('polygon'); break;
-          case 'l': setActiveTool('line'); break;
-        }
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [deleteSelectedShapes, handleCopy, handlePaste, setSelectedShapeIds]);
 
   return (
     <div className="flex flex-col h-screen bg-muted/40 font-sans" onDrop={handleDrop} onDragOver={(e) => e.preventDefault()}>
@@ -262,10 +117,10 @@ export function VectorEditor() {
         <Toolbar activeTool={activeTool} onToolSelect={setActiveTool} onBooleanOperation={applyBooleanOperation} disabled={selectedShapes.length < 2} />
         <main className="flex-1 relative bg-background shadow-inner">
           <Canvas
-            shapes={state.shapes}
+            shapes={shapes}
             activeTool={activeTool}
             setActiveTool={setActiveTool}
-            selectedShapeIds={state.selectedShapeIds}
+            selectedShapeIds={selectedShapeIds}
             setSelectedShapeIds={setSelectedShapeIds}
             addShape={addShape}
             updateShapes={updateShapes}
@@ -291,8 +146,8 @@ export function VectorEditor() {
           onPaste={handlePaste}
           canPaste={clipboard.length > 0}
           onDelete={deleteSelectedShapes}
-          onBringToFront={bringToFront}
-          onSendToBack={sendToBack}
+          onBringToFront={() => bringToFront(selectedShapeIds)}
+          onSendToBack={() => sendToBack(selectedShapeIds)}
         />
       )}
     </div>

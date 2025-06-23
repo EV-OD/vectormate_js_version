@@ -1,0 +1,47 @@
+import { type Shape } from '@/lib/types';
+
+export function getHexagonPoints(width: number, height: number): string {
+    const cx = width / 2;
+    const cy = height / 2;
+    const points: [number, number][] = [];
+    for (let i = 0; i < 6; i++) {
+        const angle = (Math.PI / 3) * i + Math.PI / 6;
+        points.push([
+            cx + (width / 2) * Math.cos(angle),
+            cy + (height / 2) * Math.sin(angle),
+        ]);
+    }
+    return points.map(p => p.map(c => Math.round(c)).join(',')).join(' ');
+}
+
+export const getBounds = (shapes: Shape[]) => {
+    if (shapes.length === 0) return { x: 0, y: 0, width: 0, height: 0 };
+
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
+    shapes.forEach(shape => {
+        const cx = shape.x + shape.width / 2;
+        const cy = shape.y + shape.height / 2;
+        const angleRad = shape.rotation * (Math.PI / 180);
+        const cos = Math.cos(angleRad);
+        const sin = Math.sin(angleRad);
+
+        const corners = [
+            { x: shape.x, y: shape.y },
+            { x: shape.x + shape.width, y: shape.y },
+            { x: shape.x, y: shape.y + shape.height },
+            { x: shape.x + shape.width, y: shape.y + shape.height },
+        ];
+
+        corners.forEach(corner => {
+            const rotatedX = (corner.x - cx) * cos - (corner.y - cy) * sin + cx;
+            const rotatedY = (corner.x - cx) * sin + (corner.y - cy) * cos + cy;
+            minX = Math.min(minX, rotatedX);
+            maxX = Math.max(maxX, rotatedX);
+            minY = Math.min(minY, rotatedY);
+            maxY = Math.max(maxY, rotatedY);
+        });
+    });
+
+    return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+};
