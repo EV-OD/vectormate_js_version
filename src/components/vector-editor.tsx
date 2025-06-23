@@ -10,6 +10,7 @@ import { exportToSvg, exportToJpeg, exportSelectionToSvg, exportSelectionToJpeg 
 import { ContextMenu } from './context-menu';
 import { useEditorState } from '@/hooks/use-editor-state';
 import { useKeyboardAndClipboard } from '@/hooks/use-keyboard-and-clipboard';
+import { CropDialog } from './crop-dialog';
 
 export function VectorEditor() {
   const {
@@ -36,6 +37,7 @@ export function VectorEditor() {
   const [activeTool, setActiveTool] = useState<Tool>('select');
   const [interactionState, setInteractionState] = useState<InteractionState>({ type: 'none' });
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; shapeId: string } | null>(null);
+  const [croppingImageId, setCroppingImageId] = useState<string | null>(null);
   
   const [canvasView, setCanvasView] = useState<CanvasView>({
     background: 'grid',
@@ -59,6 +61,7 @@ export function VectorEditor() {
   }, [duplicateShapes, selectedShapeIds]);
   
   const selectedShapes = shapes.filter(s => selectedShapeIds.includes(s.id));
+  const croppingShape = shapes.find(s => s.id === croppingImageId) as ImageShape | undefined;
 
   const { clipboard, handleCopy, handlePaste } = useKeyboardAndClipboard({
     selectedShapes,
@@ -113,6 +116,25 @@ export function VectorEditor() {
     }
   }, [updateShapes, commit]);
 
+  const handleCropSave = (crop: { x: number; y: number; width: number; height: number; }) => {
+    if (!croppingShape) return;
+
+    const newAspectRatio = crop.width / crop.height;
+    const newHeight = croppingShape.width / newAspectRatio;
+    
+    const updatedShape: ImageShape = {
+        ...croppingShape,
+        height: newHeight,
+        crop: crop
+    };
+    
+    updateShapes([updatedShape]);
+    commit();
+    setCroppingImageId(null);
+  };
+
+  const isSingleImageSelected = selectedShapes.length === 1 && selectedShapes[0].type === 'image';
+
   return (
     <div className="flex flex-col h-screen bg-muted/40 font-sans">
       <AppHeader onExport={handleExport} canvasView={canvasView} onViewChange={handleViewChange} />
@@ -165,6 +187,15 @@ export function VectorEditor() {
           onDelete={deleteSelectedShapes}
           onBringToFront={() => bringToFront(selectedShapeIds)}
           onSendToBack={() => sendToBack(selectedShapeIds)}
+          canCrop={isSingleImageSelected}
+          onCrop={() => setCroppingImageId(selectedShapeIds[0])}
+        />
+      )}
+      {croppingShape && (
+        <CropDialog
+            shape={croppingShape}
+            onClose={() => setCroppingImageId(null)}
+            onSave={handleCropSave}
         />
       )}
     </div>

@@ -14,6 +14,7 @@ import {
   Trash2,
   ArrowUpToLine,
   ArrowDownToLine,
+  Crop,
 } from 'lucide-react';
 
 type ContextMenuProps = {
@@ -26,6 +27,8 @@ type ContextMenuProps = {
   onBringToFront: () => void;
   onSendToBack: () => void;
   canPaste: boolean;
+  onCrop: () => void;
+  canCrop: boolean;
 };
 
 export function ContextMenu({
@@ -38,6 +41,8 @@ export function ContextMenu({
   onBringToFront,
   onSendToBack,
   canPaste,
+  onCrop,
+  canCrop,
 }: ContextMenuProps) {
   return (
     <DropdownMenu open={true} onOpenChange={(open) => !open && onClose()}>
@@ -48,6 +53,12 @@ export function ContextMenu({
         onContextMenu={(e) => e.preventDefault()}
         className="w-48"
       >
+        {canCrop && (
+            <DropdownMenuItem onClick={onCrop}>
+                <Crop className="mr-2" />
+                <span>Crop</span>
+            </DropdownMenuItem>
+        )}
         <DropdownMenuItem onClick={onCopy}>
           <Copy className="mr-2" />
           <span>Copy</span>

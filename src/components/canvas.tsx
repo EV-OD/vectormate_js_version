@@ -173,8 +173,14 @@ export function Canvas(props: CanvasProps) {
               }
               case 'image': {
                 const imageShape = rest as ImageShape;
+                const href = (isSelectedForInteraction && imageShape.lowQualityHref) 
+                    ? imageShape.lowQualityHref 
+                    : imageShape.href;
+                const imageRendering = (isSelectedForInteraction && imageShape.lowQualityHref) 
+                    ? "pixelated" 
+                    : "auto";
 
-                if (!imageShape.href) {
+                if (!href) {
                   return (
                     <g key={imageShape.id} {...commonProps}>
                       <rect
@@ -200,13 +206,27 @@ export function Canvas(props: CanvasProps) {
                   );
                 }
 
-                const href = (isSelectedForInteraction && imageShape.lowQualityHref) 
-                    ? imageShape.lowQualityHref 
-                    : imageShape.href;
-                
-                const imageRendering = (isSelectedForInteraction && imageShape.lowQualityHref) 
-                    ? "pixelated" 
-                    : "auto";
+                if (imageShape.crop) {
+                    const viewBox = `${imageShape.crop.x} ${imageShape.crop.y} ${imageShape.crop.width} ${imageShape.crop.height}`;
+                    return (
+                        <svg
+                            key={imageShape.id}
+                            x={imageShape.x}
+                            y={imageShape.y}
+                            width={imageShape.width}
+                            height={imageShape.height}
+                            viewBox={viewBox}
+                            {...commonProps}
+                        >
+                            <image
+                                href={href}
+                                width={imageShape.originalWidth}
+                                height={imageShape.originalHeight}
+                                style={{ imageRendering }}
+                            />
+                        </svg>
+                    );
+                }
 
                 return <image key={imageShape.id} href={href} x={imageShape.x} y={imageShape.y} width={imageShape.width} height={imageShape.height} {...commonProps} style={{ imageRendering }}/>;
               }
