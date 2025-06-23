@@ -9,11 +9,8 @@ import { type Shape, PolygonShape } from './types';
 // The application is architected to handle the async nature of this.
 
 async function performWasmOperation(shape1: Shape, shape2: Shape, opType: string): Promise<PolygonShape | null> {
-    console.error(
-        `Boolean operation "${opType}" was called, but the WASM module is not integrated. ` +
-        `This is a placeholder and should be replaced with a real implementation.`
-    );
     // Returning null will trigger the "Operation Failed" toast in the UI.
+    // This is the intended behavior for the placeholder.
     return null;
 }
 
