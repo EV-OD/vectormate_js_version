@@ -144,7 +144,7 @@ export function Canvas({
             const initialShapes = shapes.filter(s => newSelectedIds.includes(s.id));
             setInteractionState({ type: 'moving', startX: x, startY: y, initialShapes });
         } else { // Background click
-            if (e.ctrlKey) {
+            if (e.ctrlKey || e.metaKey) {
                 setInteractionState({ type: 'marquee', startX: x, startY: y });
             } else {
                 if (!e.shiftKey) { // Don't deselect all if user is trying to shift-select and misses
@@ -258,10 +258,22 @@ export function Canvas({
             const currentShape = shapes.find(s => s.id === interactionState.currentShapeId);
             if (!currentShape) break;
 
-            const newWidth = Math.abs(x - interactionState.startX);
-            const newHeight = Math.abs(y - interactionState.startY);
-            const newX = x > interactionState.startX ? interactionState.startX : x;
-            const newY = y > interactionState.startY ? interactionState.startY : y;
+            let newWidth = Math.abs(x - interactionState.startX);
+            let newHeight = Math.abs(y - interactionState.startY);
+            let newX = x > interactionState.startX ? interactionState.startX : x;
+            let newY = y > interactionState.startY ? interactionState.startY : y;
+
+            if (e.shiftKey) {
+                const size = Math.max(newWidth, newHeight);
+                newWidth = size;
+                newHeight = size;
+                if (x < interactionState.startX) {
+                    newX = interactionState.startX - size;
+                }
+                if (y < interactionState.startY) {
+                    newY = interactionState.startY - size;
+                }
+            }
 
             let updatedProps: Partial<Shape> = { x: newX, y: newY, width: newWidth, height: newHeight };
             if (currentShape.type === 'polygon') {
@@ -354,6 +366,7 @@ export function Canvas({
   const handleMouseUp = (e: React.MouseEvent) => {
     if (interactionState.type === 'marquee' && marquee) {
         const isShapeInMarquee = (shape: Shape, marqueeBox: typeof marquee) => {
+            if (!marqueeBox) return false;
             const shapeRight = shape.x + shape.width;
             const shapeBottom = shape.y + shape.height;
             const marqueeRight = marqueeBox.x + marqueeBox.width;
