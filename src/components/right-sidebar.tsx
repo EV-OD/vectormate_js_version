@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { type Shape, RectangleShape, ImageShape, SVGShape, PolygonShape, PathShape } from '@/lib/types';
+import { type Shape, RectangleShape, ImageShape, SVGShape, PolygonShape, PathShape, TextShape } from '@/lib/types';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -13,13 +13,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LayersPanel } from './layers-panel';
 import { ScrollArea } from './ui/scroll-area';
 import { Textarea } from './ui/textarea';
-import { scalePolygonPoints, scalePathData } from '@/lib/geometry';
+import { scalePolygonPoints, scalePathData, getTextDimensions } from '@/lib/geometry';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 
 type RightSidebarProps = {
   shapes: Shape[];
@@ -55,13 +56,14 @@ export function RightSidebar({
   const isSingleImage = selectedShapes.length === 1 && shape?.type === 'image';
   const isSingleSvg = selectedShapes.length === 1 && shape?.type === 'svg';
   const isSinglePath = selectedShapes.length === 1 && shape?.type === 'path';
+  const isSingleText = selectedShapes.length === 1 && shape?.type === 'text';
   
   const showFill = selectedShapes.every(s => !['line', 'image', 'svg'].includes(s.type));
   const showStroke = selectedShapes.every(s => !['image', 'svg'].includes(s.type));
   const showOpacity = selectedShapes.every(s => s.type !== 'line');
 
 
-  const handlePropertyChange = (prop: keyof Shape | 'href' | 'svgString' | 'd', value: any, commit: boolean = false) => {
+  const handlePropertyChange = (prop: keyof Shape | 'href' | 'svgString' | 'd' | 'text' | 'fontSize' | 'fontFamily' | 'fontWeight', value: any, commit: boolean = false) => {
     const updated = selectedShapes.map(s => {
       const newShape = { ...s };
 
@@ -72,7 +74,7 @@ export function RightSidebar({
         return s;
       }
       
-      const numericProps = ['x', 'y', 'width', 'height', 'rotation', 'opacity', 'fillOpacity', 'strokeOpacity', 'strokeWidth', 'borderRadius'];
+      const numericProps = ['x', 'y', 'width', 'height', 'rotation', 'opacity', 'fillOpacity', 'strokeOpacity', 'strokeWidth', 'borderRadius', 'fontSize'];
       if(numericProps.includes(prop as string)) {
         const numValue = Number(value);
         if (!isNaN(numValue)) {
@@ -96,13 +98,20 @@ export function RightSidebar({
         (newShape as any)[prop] = value;
       }
       
+      if (newShape.type === 'text' && ['text', 'fontSize', 'fontFamily', 'fontWeight'].includes(prop as string)) {
+        const textShape = newShape as TextShape;
+        const { width, height } = getTextDimensions(textShape.text, textShape.fontSize, textShape.fontFamily, textShape.fontWeight);
+        newShape.width = width;
+        newShape.height = height;
+      }
+
       return newShape;
     });
 
     onShapesUpdate(updated, commit);
   };
   
-  const getCommonValue = (prop: keyof Shape | 'href' | 'svgString'): string | number => {
+  const getCommonValue = (prop: keyof Shape | 'href' | 'svgString' | 'text' | 'fontSize' | 'fontFamily' | 'fontWeight'): string | number => {
     if (!shape) return '';
     const firstValue = (shape as any)[prop];
     if (multipleSelected) {
@@ -164,7 +173,7 @@ export function RightSidebar({
                     </div>
                   </div>
 
-                  <Accordion type="multiple" defaultValue={['transform', 'content', 'appearance']} className="w-full">
+                  <Accordion type="multiple" defaultValue={['transform', 'content', 'text', 'appearance']} className="w-full">
                     <AccordionItem value="transform">
                       <AccordionTrigger>Transform</AccordionTrigger>
                       <AccordionContent>
@@ -179,11 +188,11 @@ export function RightSidebar({
                           </div>
                           <div>
                             <Label htmlFor="width">W</Label>
-                            <Input id="width" type="number" value={getCommonValue('width')} onChange={e => handlePropertyChange('width', Math.max(0, Number(e.target.value)))} onBlur={onCommit} disabled={multipleSelected}/>
+                            <Input id="width" type="number" value={getCommonValue('width')} onChange={e => handlePropertyChange('width', Math.max(0, Number(e.target.value)))} onBlur={onCommit} disabled={multipleSelected || isSingleText}/>
                           </div>
                           <div>
                             <Label htmlFor="height">H</Label>
-                            <Input id="height" type="number" value={getCommonValue('height')} onChange={e => handlePropertyChange('height', Math.max(0, Number(e.target.value)))} onBlur={onCommit} disabled={multipleSelected}/>
+                            <Input id="height" type="number" value={getCommonValue('height')} onChange={e => handlePropertyChange('height', Math.max(0, Number(e.target.value)))} onBlur={onCommit} disabled={multipleSelected || isSingleText}/>
                           </div>
                           <div className="col-span-2">
                             <Label htmlFor="rotation">Rotate</Label>
@@ -221,6 +230,52 @@ export function RightSidebar({
                       </AccordionItem>
                     )}
 
+                    {isSingleText && (
+                        <AccordionItem value="text">
+                            <AccordionTrigger>Text</AccordionTrigger>
+                            <AccordionContent>
+                                <div className="space-y-4">
+                                    <div>
+                                        <Label htmlFor="text-content">Content</Label>
+                                        <Textarea id="text-content" value={(shape as TextShape).text || ''} onChange={e => handlePropertyChange('text', e.target.value)} onBlur={onCommit} rows={4}/>
+                                    </div>
+                                    <div>
+                                        <Label htmlFor="font-size">Font Size</Label>
+                                        <Input id="font-size" type="number" min={1} value={(shape as TextShape).fontSize || 16} onChange={e => handlePropertyChange('fontSize', e.target.value)} onBlur={onCommit} />
+                                    </div>
+                                    <div>
+                                        <Label htmlFor="font-family">Font Family</Label>
+                                        <Select value={(shape as TextShape).fontFamily} onValueChange={(val) => handlePropertyChange('fontFamily', val, true)}>
+                                            <SelectTrigger id="font-family">
+                                                <SelectValue placeholder="Select font" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="Inter">Inter</SelectItem>
+                                                <SelectItem value="Arial">Arial</SelectItem>
+                                                <SelectItem value="Verdana">Verdana</SelectItem>
+                                                <SelectItem value="Georgia">Georgia</SelectItem>
+                                                <SelectItem value="Times New Roman">Times New Roman</SelectItem>
+                                                <SelectItem value="Courier New">Courier New</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                     <div>
+                                        <Label htmlFor="font-weight">Font Weight</Label>
+                                        <Select value={(shape as TextShape).fontWeight} onValueChange={(val) => handlePropertyChange('fontWeight', val, true)}>
+                                            <SelectTrigger id="font-weight">
+                                                <SelectValue placeholder="Select weight" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="normal">Normal</SelectItem>
+                                                <SelectItem value="bold">Bold</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
+                            </AccordionContent>
+                        </AccordionItem>
+                    )}
+
                     <AccordionItem value="appearance">
                       <AccordionTrigger>Appearance</AccordionTrigger>
                       <AccordionContent>
@@ -228,25 +283,27 @@ export function RightSidebar({
                           {showFill && (
                             <>
                               <div>
-                                <Label>Fill</Label>
+                                <Label>{isSingleText ? 'Color' : 'Fill'}</Label>
                                 <div className="flex items-center gap-2">
                                   <Input type="color" value={String(getCommonValue('fill') ?? '#cccccc')} onChange={e => handlePropertyChange('fill', e.target.value, true)} className="p-1 h-8 w-8" />
                                   <Input type="text" value={String(getCommonValue('fill') ?? '')} onChange={e => handlePropertyChange('fill', e.target.value)} onBlur={onCommit} placeholder={getCommonValue('fill') === 'Mixed' ? 'Mixed' : '#cccccc'} />
                                 </div>
                               </div>
-                              <div>
-                                <Label>Fill Opacity</Label>
-                                <div className="flex items-center gap-2">
-                                  <Slider
-                                    value={[getSliderValue('fillOpacity', 100, 100)]}
-                                    onValueChange={([val]) => handlePropertyChange('fillOpacity', val / 100)}
-                                    onValueCommit={onCommit}
-                                    max={100}
-                                    step={1}
-                                  />
-                                  <span className="text-sm text-muted-foreground w-12 text-right">{getCommonValue('fillOpacity') === 'Mixed' ? 'Mixed' : `${Math.round(getSliderValue('fillOpacity', 100, 100))}%`}</span>
+                              {!isSingleText && (
+                                <div>
+                                    <Label>Fill Opacity</Label>
+                                    <div className="flex items-center gap-2">
+                                    <Slider
+                                        value={[getSliderValue('fillOpacity', 100, 100)]}
+                                        onValueChange={([val]) => handlePropertyChange('fillOpacity', val / 100)}
+                                        onValueCommit={onCommit}
+                                        max={100}
+                                        step={1}
+                                    />
+                                    <span className="text-sm text-muted-foreground w-12 text-right">{getCommonValue('fillOpacity') === 'Mixed' ? 'Mixed' : `${Math.round(getSliderValue('fillOpacity', 100, 100))}%`}</span>
+                                    </div>
                                 </div>
-                              </div>
+                              )}
                               <Separator/>
                             </>
                           )}
@@ -290,29 +347,31 @@ export function RightSidebar({
                             <>
                               <Separator />
                               <div>
-                                <Label>Stroke</Label>
+                                <Label>{isSingleText ? 'Outline' : 'Stroke'}</Label>
                                 <div className="flex items-center gap-2">
                                   <Input type="color" value={String(getCommonValue('stroke') ?? '#000000')} onChange={e => handlePropertyChange('stroke', e.target.value, true)} className="p-1 h-8 w-8" />
                                   <Input type="text" value={String(getCommonValue('stroke') ?? '')} onChange={e => handlePropertyChange('stroke', e.target.value)} onBlur={onCommit} placeholder={getCommonValue('stroke') === 'Mixed' ? 'Mixed' : '#000000'} />
                                 </div>
                               </div>
                               <div>
-                                <Label htmlFor="stroke-width">Stroke Width</Label>
+                                <Label htmlFor="stroke-width">{isSingleText ? 'Outline Width' : 'Stroke Width'}</Label>
                                 <Input id="stroke-width" type="number" value={String(getCommonValue('strokeWidth') ?? '0')} min={0} onChange={e => handlePropertyChange('strokeWidth', e.target.value)} onBlur={onCommit} />
                               </div>
-                              <div>
-                                <Label>Stroke Opacity</Label>
-                                <div className="flex items-center gap-2">
-                                  <Slider
-                                    value={[getSliderValue('strokeOpacity', 100, 100)]}
-                                    onValueChange={([val]) => handlePropertyChange('strokeOpacity', val / 100)}
-                                    onValueCommit={onCommit}
-                                    max={100}
-                                    step={1}
-                                  />
-                                  <span className="text-sm text-muted-foreground w-12 text-right">{getCommonValue('strokeOpacity') === 'Mixed' ? 'Mixed' : `${Math.round(getSliderValue('strokeOpacity', 100, 100))}%`}</span>
+                              {!isSingleText && (
+                                <div>
+                                    <Label>Stroke Opacity</Label>
+                                    <div className="flex items-center gap-2">
+                                    <Slider
+                                        value={[getSliderValue('strokeOpacity', 100, 100)]}
+                                        onValueChange={([val]) => handlePropertyChange('strokeOpacity', val / 100)}
+                                        onValueCommit={onCommit}
+                                        max={100}
+                                        step={1}
+                                    />
+                                    <span className="text-sm text-muted-foreground w-12 text-right">{getCommonValue('strokeOpacity') === 'Mixed' ? 'Mixed' : `${Math.round(getSliderValue('strokeOpacity', 100, 100))}%`}</span>
+                                    </div>
                                 </div>
-                              </div>
+                              )}
                             </>
                           )}
                         </div>

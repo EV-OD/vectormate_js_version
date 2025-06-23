@@ -1,4 +1,4 @@
-import { type Shape, type CanvasView, RectangleShape, ImageShape, SVGShape, PathShape } from '@/lib/types';
+import { type Shape, type CanvasView, RectangleShape, ImageShape, SVGShape, PathShape, TextShape } from '@/lib/types';
 import { getBounds } from './geometry';
 
 function shapeToSvgElement(shape: Shape): string {
@@ -38,6 +38,10 @@ function shapeToSvgElement(shape: Shape): string {
         const pathTransform = `translate(${pathShape.x}, ${pathShape.y})`;
         const style_attrs = `fill="${pathShape.fill || 'none'}" fill-opacity="${pathShape.fillOpacity ?? 1}" stroke="${pathShape.stroke || 'none'}" stroke-width="${pathShape.strokeWidth || 0}" stroke-opacity="${pathShape.strokeOpacity ?? 1}" stroke-linecap="round" stroke-linejoin="round"`;
         return `<path d="${pathShape.d}" transform="${pathTransform} rotate(${pathShape.rotation} ${pathShape.width / 2} ${pathShape.height / 2})" ${opacity} ${style_attrs} />`;
+    }
+    case 'text': {
+        const textShape = shape as TextShape;
+        return `<text x="${textShape.x}" y="${textShape.y}" font-family="${textShape.fontFamily}" font-size="${textShape.fontSize}" font-weight="${textShape.fontWeight}" fill="${textShape.fill}" stroke="${textShape.stroke || 'none'}" stroke-width="${textShape.strokeWidth || 0}" dominant-baseline="text-before-edge" ${transform} ${opacity}>${textShape.text}</text>`;
     }
   }
 }

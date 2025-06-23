@@ -19,7 +19,8 @@ import {
   Image,
   FileCode,
   Brush,
-  Hand
+  Hand,
+  Type as TypeIcon,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -144,6 +145,22 @@ export function Toolbar({
             </TooltipTrigger>
             <TooltipContent side="right">
               <p>Brush (B)</p>
+            </TooltipContent>
+          </Tooltip>
+          
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant={activeTool === 'text' ? 'secondary' : 'ghost'}
+                size="icon"
+                onClick={() => onToolSelect('text')}
+                className={cn(activeTool === 'text' && 'text-primary ring-2 ring-primary/50')}
+              >
+                <TypeIcon className="w-5 h-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right">
+              <p>Text (T)</p>
             </TooltipContent>
           </Tooltip>
         </div>

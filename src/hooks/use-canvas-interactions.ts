@@ -2,9 +2,9 @@
 'use client';
 
 import React, { useRef, useState, useCallback } from 'react';
-import { type Shape, type Tool, type InteractionState, type Handle, PolygonShape, ShapeType, CanvasView, ImageShape, SVGShape, PathShape } from '@/lib/types';
+import { type Shape, type Tool, type InteractionState, type Handle, PolygonShape, ShapeType, CanvasView, ImageShape, SVGShape, PathShape, TextShape } from '@/lib/types';
 import { nanoid } from 'nanoid';
-import { getBounds, getHexagonPoints, scalePolygonPoints, scalePathData } from '@/lib/geometry';
+import { getBounds, getHexagonPoints, scalePolygonPoints, scalePathData, getTextDimensions } from '@/lib/geometry';
 import { SNAP_THRESHOLD } from '@/lib/constants';
 
 type UseCanvasInteractionsProps = {
@@ -126,9 +126,8 @@ export function useCanvasInteractions({
     const { x, y } = pos;
 
     if (activeTool === 'select') {
-        // If Ctrl is pressed, always prioritize marquee selection.
         if (e.ctrlKey) {
-            e.stopPropagation(); // Stop from propagating to shape move
+            e.stopPropagation(); 
             setInteractionState({ type: 'marquee', startX: x, startY: y });
             return;
         }
@@ -161,6 +160,10 @@ export function useCanvasInteractions({
             const shapeId = target.dataset.shapeId;
             if (shapeId && shapeId !== 'background') {
                 const isSelected = selectedShapeIds.includes(shapeId);
+                if (e.ctrlKey) {
+                    setInteractionState({ type: 'marquee', startX: x, startY: y });
+                    return;
+                }
                 const newSelectedIds = e.shiftKey
                     ? (isSelected ? selectedShapeIds.filter(id => id !== shapeId) : [...selectedShapeIds, shapeId])
                     : (!isSelected ? [shapeId] : selectedShapeIds);
@@ -170,7 +173,9 @@ export function useCanvasInteractions({
                 setDraftShapes(movingShapes);
                 setInteractionState({ type: 'moving', startX: x, startY: y, initialShapes: movingShapes });
             } else { // Background click
-                setSelectedShapeIds([]);
+                if (!e.ctrlKey) {
+                    setSelectedShapeIds([]);
+                }
             }
         }
     } else if (activeTool === 'brush') {
@@ -193,6 +198,32 @@ export function useCanvasInteractions({
         };
         setDraftShapes([newShape]);
         setInteractionState({ type: 'brushing', currentShapeId: newShape.id, points: [{ x, y }] });
+    } else if (activeTool === 'text') {
+        const defaultText = 'Text';
+        const defaultFontSize = 48;
+        const defaultFontFamily = 'Inter';
+        const defaultFontWeight = 'normal';
+    
+        const { width, height } = getTextDimensions(defaultText, defaultFontSize, defaultFontFamily, defaultFontWeight);
+    
+        const newShape: TextShape = {
+            id: nanoid(),
+            type: 'text',
+            name: 'Text',
+            x: pos.x,
+            y: pos.y,
+            width,
+            height,
+            rotation: 0,
+            opacity: 1,
+            text: defaultText,
+            fontSize: defaultFontSize,
+            fontFamily: defaultFontFamily,
+            fontWeight: defaultFontWeight,
+            fill: '#ffffff',
+        };
+        addShape(newShape, true);
+        setActiveTool('select');
     } else {
         const shapeName = activeTool.charAt(0).toUpperCase() + activeTool.slice(1);
         const commonProps = { id: nanoid(), name: shapeName, x, y, width: 0, height: 0, rotation: 0, opacity: 1, fillOpacity: 1, strokeOpacity: 1 };
@@ -208,7 +239,7 @@ export function useCanvasInteractions({
       setDraftShapes([newShape]);
       setInteractionState({ type: 'drawing', shapeType: activeTool, startX: x, startY: y, currentShapeId: newShape.id });
     }
-  }, [getMousePosition, activeTool, shapes, selectedShapeIds, canvasView, getScreenPosition, setContextMenu, setInteractionState, setSelectedShapeIds, addShape]);
+  }, [getMousePosition, activeTool, shapes, selectedShapeIds, canvasView, getScreenPosition, setContextMenu, setInteractionState, setSelectedShapeIds, addShape, setActiveTool]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (interactionState.type === 'none') return;
@@ -343,6 +374,33 @@ export function useCanvasInteractions({
             if (initialShapes.length !== 1) break; 
             
             const initialShape = initialShapes[0];
+
+            if (initialShape.type === 'text') {
+                let { x: sx, y: sy } = getMousePosition(e);
+                const snappedDx = sx - interactionState.startX;
+                const oldWidth = initialShape.width;
+                let newWidth = oldWidth + snappedDx; // Simplified: only scale based on horizontal drag from an edge
+                
+                if (oldWidth > 0) {
+                    const scaleFactor = newWidth / oldWidth;
+                    const newFontSize = Math.max(8, initialShape.fontSize * scaleFactor);
+
+                    const { width: finalWidth, height: finalHeight } = getTextDimensions(
+                        initialShape.text, newFontSize, initialShape.fontFamily, initialShape.fontWeight
+                    );
+                    
+                    const updatedShape: TextShape = {
+                        ...initialShape,
+                        fontSize: newFontSize,
+                        width: finalWidth,
+                        height: finalHeight,
+                        x: initialShape.x + (oldWidth - finalWidth) / 2,
+                        y: initialShape.y + (initialShape.height - finalHeight) / 2,
+                    };
+                    setDraftShapes([updatedShape]);
+                }
+                break;
+            }
 
             if (initialShape.rotation === 0) {
                 const { x: sx, y: sy } = getSnappedCoords(x, y, [initialShape.id]);

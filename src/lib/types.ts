@@ -1,6 +1,6 @@
 'use client';
 
-export type ShapeType = 'rectangle' | 'circle' | 'polygon' | 'line' | 'image' | 'svg' | 'path';
+export type ShapeType = 'rectangle' | 'circle' | 'polygon' | 'line' | 'image' | 'svg' | 'path' | 'text';
 
 export type BaseShape = {
   id: string;
@@ -52,9 +52,17 @@ export interface PathShape extends BaseShape {
   d: string;
 }
 
-export type Shape = RectangleShape | CircleShape | PolygonShape | LineShape | ImageShape | SVGShape | PathShape;
+export interface TextShape extends BaseShape {
+    type: 'text';
+    text: string;
+    fontSize: number;
+    fontFamily: string;
+    fontWeight: 'normal' | 'bold';
+}
 
-export type Tool = 'select' | 'rectangle' | 'circle' | 'polygon' | 'line' | 'brush' | 'pan';
+export type Shape = RectangleShape | CircleShape | PolygonShape | LineShape | ImageShape | SVGShape | PathShape | TextShape;
+
+export type Tool = 'select' | 'rectangle' | 'circle' | 'polygon' | 'line' | 'brush' | 'pan' | 'text';
 
 export type Handle = 'n' | 's' | 'e' | 'w' | 'nw' | 'ne' | 'sw' | 'se' | 'rotate';
 

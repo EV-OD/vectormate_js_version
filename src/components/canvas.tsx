@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { type Shape, type Tool, type InteractionState, type Handle, PolygonShape, ShapeType, CanvasView, RectangleShape, ImageShape, SVGShape, PathShape } from '@/lib/types';
+import { type Shape, type Tool, type InteractionState, type Handle, PolygonShape, ShapeType, CanvasView, RectangleShape, ImageShape, SVGShape, PathShape, TextShape } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { getBounds, getHexagonPoints } from '@/lib/geometry';
 import { useCanvasInteractions } from '@/hooks/use-canvas-interactions';
@@ -72,6 +72,7 @@ export function Canvas(props: CanvasProps) {
         'cursor-nesw-resize': interactionState.type === 'resizing' && (interactionState.handle === 'ne' || interactionState.handle === 'sw'),
         'cursor-ns-resize': interactionState.type === 'resizing' && (interactionState.handle === 'n' || interactionState.handle === 's'),
         'cursor-ew-resize': interactionState.type === 'resizing' && (interactionState.handle === 'w' || interactionState.handle === 'e'),
+        'cursor-text': props.activeTool === 'text',
       })}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
@@ -204,6 +205,27 @@ export function Canvas(props: CanvasProps) {
                           />
                       </g>
                   );
+              }
+              case 'text': {
+                const textShape = rest as TextShape;
+                return (
+                    <text
+                        key={textShape.id}
+                        x={textShape.x}
+                        y={textShape.y}
+                        fontFamily={textShape.fontFamily}
+                        fontSize={textShape.fontSize}
+                        fontWeight={textShape.fontWeight}
+                        fill={textShape.fill}
+                        stroke={textShape.stroke}
+                        strokeWidth={textShape.strokeWidth}
+                        dominantBaseline="text-before-edge"
+                        style={{ userSelect: 'none' }}
+                        {...commonProps}
+                    >
+                        {textShape.text}
+                    </text>
+                );
               }
             }
           })}

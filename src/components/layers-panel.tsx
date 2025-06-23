@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { type Shape, ShapeType } from '@/lib/types';
 import { ScrollArea } from './ui/scroll-area';
 import { Button } from './ui/button';
-import { CopyPlus, Trash2, Square, Circle, Hexagon, Minus, Pencil } from 'lucide-react';
+import { CopyPlus, Trash2, Square, Circle, Hexagon, Minus, Pencil, Type as TypeIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from './ui/input';
 
@@ -24,6 +24,7 @@ const ShapeIcon = ({ type }: { type: ShapeType }) => {
     case 'circle': return <Circle className="w-4 h-4" />;
     case 'polygon': return <Hexagon className="w-4 h-4" />;
     case 'line': return <Minus className="w-4 h-4" />;
+    case 'text': return <TypeIcon className="w-4 h-4" />;
     default: return null;
   }
 };

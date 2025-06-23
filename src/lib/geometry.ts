@@ -1,4 +1,4 @@
-import { type Shape, PathShape } from '@/lib/types';
+import { type Shape, PathShape, TextShape } from '@/lib/types';
 
 export function getHexagonPoints(width: number, height: number): string {
     const cx = width / 2;
@@ -81,3 +81,29 @@ export const getBounds = (shapes: Shape[]) => {
 
     return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
 };
+
+
+export function getTextDimensions(
+  text: string, 
+  fontSize: number, 
+  fontFamily: string, 
+  fontWeight: string
+): { width: number, height: number } {
+  if (typeof document === 'undefined') {
+    return { width: text.length * (fontSize / 1.8), height: fontSize * 1.2 };
+  }
+  const canvas = document.createElement('canvas');
+  const context = canvas.getContext('2d');
+  if (!context) {
+    return { width: text.length * (fontSize / 1.8), height: fontSize * 1.2 };
+  }
+  context.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
+  const metrics = context.measureText(text);
+  
+  const height = (metrics.fontBoundingBoxAscent ?? fontSize) + (metrics.fontBoundingBoxDescent ?? (fontSize * 0.2));
+  
+  return { 
+    width: metrics.width, 
+    height: height
+  };
+}
