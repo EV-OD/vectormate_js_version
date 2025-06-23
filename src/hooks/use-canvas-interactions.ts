@@ -163,37 +163,47 @@ export function useCanvasInteractions({
                 const clickedShape = shapes.find(s => s.id === shapeId);
                 if (!clickedShape) return;
 
+                const isAlreadySelected = selectedShapeIds.includes(shapeId);
+                let newSelectedIds: string[];
+
                 if (isolationMode) {
                     if (clickedShape.groupId !== isolationMode) {
                         setSelectedShapeIds([]);
                         return;
                     }
-                    const isSelected = selectedShapeIds.includes(shapeId);
-                    const newSelectedIds = e.shiftKey
-                        ? (isSelected ? selectedShapeIds.filter(id => id !== shapeId) : [...selectedShapeIds, shapeId])
-                        : [shapeId];
-
-                    setSelectedShapeIds(newSelectedIds);
-                    const movingShapes = shapes.filter(s => newSelectedIds.includes(s.id));
-                    setDraftShapes(movingShapes);
-                    setInteractionState({ type: 'moving', startX: x, startY: y, initialShapes: movingShapes });
-
+                    if (e.shiftKey) {
+                        newSelectedIds = isAlreadySelected ? selectedShapeIds.filter(id => id !== shapeId) : [...selectedShapeIds, shapeId];
+                    } else {
+                        if (!isAlreadySelected) {
+                            newSelectedIds = [shapeId];
+                        } else {
+                            newSelectedIds = selectedShapeIds;
+                        }
+                    }
                 } else {
                     const groupId = clickedShape.groupId;
-                    let idsToSelect = groupId ? shapes.filter(s => s.groupId === groupId).map(s => s.id) : [shapeId];
-                    const isGroupSelected = idsToSelect.every(id => selectedShapeIds.includes(id)) && idsToSelect.length === selectedShapeIds.length;
-
-                    const newSelectedIds = e.shiftKey
-                        ? (isGroupSelected 
-                            ? selectedShapeIds.filter(id => !idsToSelect.includes(id)) 
-                            : [...new Set([...selectedShapeIds, ...idsToSelect])])
-                        : (isGroupSelected ? selectedShapeIds : idsToSelect);
-
-                    setSelectedShapeIds(newSelectedIds);
-                    const movingShapes = shapes.filter(s => newSelectedIds.includes(s.id));
-                    setDraftShapes(movingShapes);
-                    setInteractionState({ type: 'moving', startX: x, startY: y, initialShapes: movingShapes });
+                    const idsToModify = groupId ? shapes.filter(s => s.groupId === groupId).map(s => s.id) : [shapeId];
+                    const isGroupFullySelected = idsToModify.every(id => selectedShapeIds.includes(id));
+                    
+                    if (e.shiftKey) {
+                        if (isGroupFullySelected) {
+                            newSelectedIds = selectedShapeIds.filter(id => !idsToModify.includes(id));
+                        } else {
+                            newSelectedIds = [...new Set([...selectedShapeIds, ...idsToModify])];
+                        }
+                    } else {
+                        if (!isAlreadySelected) {
+                            newSelectedIds = idsToModify;
+                        } else {
+                            newSelectedIds = selectedShapeIds;
+                        }
+                    }
                 }
+                
+                setSelectedShapeIds(newSelectedIds);
+                const movingShapes = shapes.filter(s => newSelectedIds.includes(s.id));
+                setDraftShapes(movingShapes);
+                setInteractionState({ type: 'moving', startX: x, startY: y, initialShapes: movingShapes });
             } else { // Background click
                 if (!e.ctrlKey) {
                     setSelectedShapeIds([]);
@@ -753,7 +763,9 @@ export function useCanvasInteractions({
     const shapeId = target.dataset.shapeId;
 
     if (shapeId && shapeId !== 'background') {
-        if (!selectedShapeIds.includes(shapeId)) {
+        const isAlreadySelected = selectedShapeIds.includes(shapeId);
+        
+        if (!isAlreadySelected) {
             const clickedShape = shapes.find(s => s.id === shapeId);
             if (clickedShape?.groupId) {
                  setSelectedShapeIds(shapes.filter(s => s.groupId === clickedShape.groupId).map(s => s.id));
