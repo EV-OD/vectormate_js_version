@@ -205,7 +205,7 @@ export function RightSidebar({
               ) : (
                 <>
                   <div className="flex items-center justify-between">
-                    <h2 className="text-lg font-semibold font-headline">
+                    <h2 className="text-lg font-semibold font-headline min-w-0 truncate">
                       {multipleSelected ? `${selectedShapes.length} items` : (shape.name || shape.type.charAt(0).toUpperCase() + shape.type.slice(1))}
                     </h2>
                     <div className="flex items-center gap-1">
