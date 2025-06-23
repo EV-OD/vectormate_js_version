@@ -1,9 +1,10 @@
 'use client';
 
 import { useReducer, useCallback } from 'react';
-import { type Shape } from '@/lib/types';
+import { type Shape, PolygonShape } from '@/lib/types';
 import { useToast } from './use-toast';
 import { nanoid } from 'nanoid';
+import { union } from '@/lib/boolean-operations';
 
 const HISTORY_LIMIT = 20;
 
@@ -206,22 +207,54 @@ export function useEditorState() {
       });
       return;
     }
-    const selectedShapes = state.present.shapes.filter(s => state.present.selectedShapeIds.includes(s.id));
-    
-    // Placeholder logic
-    const otherShapes = state.present.shapes.filter(s => !selectedShapes.map(ss => ss.id).includes(s.id));
-    if (selectedShapes.length < 2) return;
-    const [shape1] = selectedShapes;
-    
-    setState({
-      shapes: [...otherShapes, shape1],
-      selectedShapeIds: [shape1.id],
-    }, true);
 
-    toast({
-      title: `${operation.charAt(0).toUpperCase() + operation.slice(1)} Applied`,
-      description: "This is a placeholder for a real boolean operation.",
-    });
+    const selectedShapes = state.present.shapes.filter(s => state.present.selectedShapeIds.includes(s.id));
+    const compatibleShapes = selectedShapes.filter(s => s.type !== 'line');
+    
+    if (compatibleShapes.length < 2) {
+        toast({
+            title: "Compatibility Error",
+            description: "Boolean operations require at least two compatible shapes (rectangles, circles, or polygons).",
+            variant: "destructive",
+        });
+        return;
+    }
+
+    const [shape1, shape2] = compatibleShapes;
+
+    let newShape: PolygonShape | null = null;
+    switch (operation) {
+        case 'union':
+            newShape = union(shape1, shape2);
+            break;
+        default:
+             toast({
+                title: `${operation.charAt(0).toUpperCase() + operation.slice(1)} Not Implemented`,
+                description: "This operation is not yet available.",
+            });
+            return;
+    }
+    
+    if (newShape) {
+        const idsToRemove = [shape1.id, shape2.id];
+        const otherShapes = state.present.shapes.filter(s => !idsToRemove.includes(s.id));
+
+        setState({
+            shapes: [...otherShapes, newShape],
+            selectedShapeIds: [newShape.id],
+        }, true);
+
+        toast({
+            title: `${operation.charAt(0).toUpperCase() + operation.slice(1)} Applied`,
+            description: "Shapes were successfully combined.",
+        });
+    } else {
+         toast({
+            title: "Operation Failed",
+            description: "The boolean operation could not be completed.",
+            variant: "destructive"
+        });
+    }
   };
   
   return {
