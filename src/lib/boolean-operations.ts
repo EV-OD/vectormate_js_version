@@ -1,3 +1,6 @@
+
+'use client';
+
 import { type Shape, PolygonShape } from './types';
 import { nanoid } from 'nanoid';
 // Use `type` to ensure these are only for type checking and don't cause runtime import issues.
@@ -41,7 +44,7 @@ function shapeToPoints(shape: Shape): WasmPointD[] {
     const transformPoint = (x: number, y: number): WasmPointD => {
         const rotatedX = (x - cx) * cos - (y - cy) * sin + cx;
         const rotatedY = (x - cx) * sin + (y - cy) * cos + cy;
-        return new wasmModule!.PointD(rotatedX, rotatedY);
+        return new wasmModule!.PointD(rotatedX, rotatedY, 0);
     };
 
     switch (shape.type) {
