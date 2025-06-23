@@ -173,9 +173,10 @@ export function Canvas(props: CanvasProps) {
               }
               case 'image': {
                 const imageShape = rest as ImageShape;
+
                 if (!imageShape.href) {
                   return (
-                    <g key={rest.id} {...commonProps}>
+                    <g key={imageShape.id} {...commonProps}>
                       <rect
                         x={imageShape.x}
                         y={imageShape.y}
@@ -184,7 +185,7 @@ export function Canvas(props: CanvasProps) {
                         fill="hsl(var(--muted))"
                         stroke="hsl(var(--border))"
                         strokeDasharray="4"
-                        data-shape-id={rest.id}
+                        data-shape-id={imageShape.id}
                       />
                        <foreignObject 
                           x={imageShape.x} y={imageShape.y} 
@@ -199,17 +200,18 @@ export function Canvas(props: CanvasProps) {
                   );
                 }
 
-                if (isSelectedForInteraction) {
-                    return <rect key={rest.id} x={rest.x} y={rest.y} width={rest.width} height={rest.height} fill="hsl(var(--primary) / 0.3)" stroke="hsl(var(--primary))" strokeDasharray="4" strokeWidth={1 / canvasView.scale} {...commonProps} />;
-                }
+                const href = (isSelectedForInteraction && imageShape.lowQualityHref) 
+                    ? imageShape.lowQualityHref 
+                    : imageShape.href;
                 
-                const href = (isInteracting && imageShape.lowQualityHref) ? imageShape.lowQualityHref : imageShape.href;
-                const imageRendering = (isInteracting && imageShape.lowQualityHref) ? "pixelated" : "auto";
+                const imageRendering = (isSelectedForInteraction && imageShape.lowQualityHref) 
+                    ? "pixelated" 
+                    : "auto";
 
-                return <image key={rest.id} href={href} x={rest.x} y={rest.y} width={rest.width} height={rest.height} {...commonProps} style={{ imageRendering }}/>;
+                return <image key={imageShape.id} href={href} x={imageShape.x} y={imageShape.y} width={imageShape.width} height={imageShape.height} {...commonProps} style={{ imageRendering }}/>;
               }
               case 'svg': {
-                const { svgString, dataUrl } = rest as SVGShape;
+                const { dataUrl } = rest as SVGShape;
                  if (isSelectedForInteraction) {
                     return <rect key={rest.id} x={rest.x} y={rest.y} width={rest.width} height={rest.height} fill="hsl(var(--primary) / 0.3)" stroke="hsl(var(--primary))" strokeDasharray="4" strokeWidth={1 / canvasView.scale} {...commonProps} />;
                 }
