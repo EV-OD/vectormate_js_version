@@ -139,6 +139,7 @@ export function Canvas(props: CanvasProps) {
             }
 
             const isInteracting = ['moving', 'resizing', 'rotating', 'editing'].includes(interactionState.type);
+            const isSelectedForInteraction = isInteracting && selectedShapeIds.includes(rest.id);
 
             switch (rest.type) {
               case 'rectangle':
@@ -171,17 +172,17 @@ export function Canvas(props: CanvasProps) {
               }
               case 'image': {
                 const { href } = rest as ImageShape;
-                if (isInteracting && selectedShapeIds.includes(rest.id)) {
-                    commonProps.style = { imageRendering: 'pixelated' };
+                if (isSelectedForInteraction) {
+                    return <rect key={rest.id} x={rest.x} y={rest.y} width={rest.width} height={rest.height} fill="hsl(var(--primary) / 0.3)" stroke="hsl(var(--primary))" strokeDasharray="4" strokeWidth={1 / canvasView.scale} {...commonProps} />;
                 }
                 return <image key={rest.id} href={href} x={rest.x} y={rest.y} width={rest.width} height={rest.height} {...commonProps} />;
               }
               case 'svg': {
                 const { svgString } = rest as SVGShape;
-                const svgHref = `data:image/svg+xml;base64,${typeof window !== 'undefined' ? window.btoa(unescape(encodeURIComponent(svgString))) : ''}`;
-                if (isInteracting && selectedShapeIds.includes(rest.id)) {
-                    commonProps.style = { imageRendering: 'pixelated' };
+                 if (isSelectedForInteraction) {
+                    return <rect key={rest.id} x={rest.x} y={rest.y} width={rest.width} height={rest.height} fill="hsl(var(--primary) / 0.3)" stroke="hsl(var(--primary))" strokeDasharray="4" strokeWidth={1 / canvasView.scale} {...commonProps} />;
                 }
+                const svgHref = `data:image/svg+xml;base64,${typeof window !== 'undefined' ? window.btoa(unescape(encodeURIComponent(svgString))) : ''}`;
                 return <image key={rest.id} href={svgHref} x={rest.x} y={rest.y} width={rest.width} height={rest.height} {...commonProps} />;
               }
               case 'path': {
