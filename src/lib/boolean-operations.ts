@@ -1,6 +1,4 @@
-
 import { type Shape, PolygonShape } from './types';
-import * as martinez from 'martinez-polygon-clipping';
 import { nanoid } from 'nanoid';
 
 type MartinezPoint = [number, number];
@@ -8,7 +6,7 @@ type MartinezPolygon = MartinezPoint[][];
 type MartinezMultiPolygon = MartinezPolygon[];
 
 function shapeToMartinezPolygon(shape: Shape): MartinezPolygon | null {
-    if (shape.type === 'line') return null;
+    if (shape.type === 'line' || shape.type === 'image' || shape.type === 'svg' || shape.type === 'path' || shape.type === 'text') return null;
 
     const points: MartinezPoint[] = [];
     const cx = shape.x + shape.width / 2;
@@ -52,82 +50,55 @@ function shapeToMartinezPolygon(shape: Shape): MartinezPolygon | null {
     return [rotatedPoints];
 }
 
-function resultToShape(
-    result: MartinezMultiPolygon | null, 
-    fallbackShape: Shape,
-    name: string
-): PolygonShape | null {
-    if (!result || result.length === 0 || result[0].length === 0) return null;
-    
-    const resultPolygon = result[0][0];
-
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    resultPolygon.forEach(([px, py]) => {
-        minX = Math.min(minX, px);
-        minY = Math.min(minY, py);
-        maxX = Math.max(maxX, px);
-        maxY = Math.max(maxY, py);
-    });
-
-    const newBounds = {
-        x: minX,
-        y: minY,
-        width: maxX - minX,
-        height: maxY - minY,
-    };
-
-    const relativePoints = resultPolygon.map(([px, py]) => [px - newBounds.x, py - newBounds.y]);
-
-    const newShape: PolygonShape = {
-        id: nanoid(),
-        type: 'polygon',
-        name,
-        ...newBounds,
-        rotation: 0,
-        fill: fallbackShape.fill || '#cccccc',
-        stroke: fallbackShape.stroke,
-        strokeWidth: fallbackShape.strokeWidth || 0,
-        opacity: fallbackShape.opacity || 1,
-        points: relativePoints.map(p => p.join(',')).join(' '),
-    };
-
-    return newShape;
-}
-
-
-function performOperation(
+async function performWasmOperation(
     shape1: Shape, 
     shape2: Shape, 
-    operation: (a: MartinezPolygon, b: MartinezPolygon) => MartinezMultiPolygon | null,
-    name: string
-): PolygonShape | null {
+    operationName: 'union' | 'subtract' | 'intersect' | 'exclude'
+): Promise<PolygonShape | null> {
     const poly1 = shapeToMartinezPolygon(shape1);
     const poly2 = shapeToMartinezPolygon(shape2);
 
     if (!poly1 || !poly2) return null;
 
-    try {
-        const result = operation(poly1, poly2);
-        return resultToShape(result, shape1, name);
-    } catch (e) {
-        console.error(`Boolean operation '${name}' failed:`, e);
-        return null;
-    }
+    console.warn(
+        `Boolean operation '${operationName}' is a placeholder. ` + 
+        `In a real app, this would call a C++/WASM module with the polygon data.`
+    );
+    
+    // --- PSEUDO-CODE for C++/WASM integration ---
+    // 1. Ensure the WASM module is loaded.
+    //    const wasm = await import('./geometry.wasm');
+    //
+    // 2. Serialize polygon data into a format C++ can read (e.g., a flat array of numbers).
+    //    const dataForWasm = serialize(poly1, poly2);
+    //
+    // 3. Call the fast C++ function from the WASM module.
+    //    const wasmResult = wasm[operationName](dataForWasm);
+    //
+    // 4. Deserialize the result from WASM back into a polygon structure.
+    //    const resultPolygon = deserialize(wasmResult);
+    //
+    // 5. Convert the raw polygon data into a VectorMate shape object.
+    //    return resultToShape(resultPolygon, shape1, operationName);
+    // -----------------------------------------
+
+    // For now, we return null to indicate the operation is not implemented.
+    return Promise.resolve(null);
 }
 
 
-export function union(shape1: Shape, shape2: Shape): PolygonShape | null {
-    return performOperation(shape1, shape2, martinez.union, 'Union');
+export async function union(shape1: Shape, shape2: Shape): Promise<PolygonShape | null> {
+    return performWasmOperation(shape1, shape2, 'union');
 }
 
-export function subtract(subjectShape: Shape, clipperShape: Shape): PolygonShape | null {
-    return performOperation(subjectShape, clipperShape, martinez.diff, 'Subtract');
+export async function subtract(subjectShape: Shape, clipperShape: Shape): Promise<PolygonShape | null> {
+    return performWasmOperation(subjectShape, clipperShape, 'subtract');
 }
 
-export function intersect(shape1: Shape, shape2: Shape): PolygonShape | null {
-    return performOperation(shape1, shape2, martinez.intersection, 'Intersect');
+export async function intersect(shape1: Shape, shape2: Shape): Promise<PolygonShape | null> {
+    return performWasmOperation(shape1, shape2, 'intersect');
 }
 
-export function exclude(shape1: Shape, shape2: Shape): PolygonShape | null {
-    return performOperation(shape1, shape2, martinez.xor, 'Exclude');
+export async function exclude(shape1: Shape, shape2: Shape): Promise<PolygonShape | null> {
+    return performWasmOperation(shape1, shape2, 'exclude');
 }

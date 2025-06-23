@@ -226,7 +226,7 @@ export function useEditorState() {
     }), true);
   }, [setState]);
 
-  const applyBooleanOperation = useCallback((operation: 'union' | 'subtract' | 'intersect' | 'exclude') => {
+  const applyBooleanOperation = useCallback(async (operation: 'union' | 'subtract' | 'intersect' | 'exclude') => {
     const { shapes, selectedShapeIds } = state.present;
     if (selectedShapeIds.length < 2) {
         toast({
@@ -238,7 +238,7 @@ export function useEditorState() {
     }
 
     const selectedShapes = shapes.filter(s => selectedShapeIds.includes(s.id));
-    const compatibleShapes = selectedShapes.filter(s => !['line', 'image', 'svg', 'path'].includes(s.type));
+    const compatibleShapes = selectedShapes.filter(s => !['line', 'image', 'svg', 'path', 'text'].includes(s.type));
     
     if (compatibleShapes.length < 2) {
         toast({
@@ -254,16 +254,16 @@ export function useEditorState() {
     let newShape: PolygonShape | null = null;
     switch (operation) {
         case 'union':
-            newShape = union(shape1, shape2);
+            newShape = await union(shape1, shape2);
             break;
         case 'subtract':
-            newShape = subtract(shape1, shape2);
+            newShape = await subtract(shape1, shape2);
             break;
         case 'intersect':
-            newShape = intersect(shape1, shape2);
+            newShape = await intersect(shape1, shape2);
             break;
         case 'exclude':
-            newShape = exclude(shape1, shape2);
+            newShape = await exclude(shape1, shape2);
             break;
     }
     
@@ -283,7 +283,7 @@ export function useEditorState() {
     } else {
          toast({
             title: "Operation Failed",
-            description: "The boolean operation could not be completed. Make sure shapes are overlapping.",
+            description: "The boolean operation could not be completed. This is expected until the C++/WASM module is integrated.",
             variant: "destructive"
         });
     }
