@@ -20,7 +20,7 @@ interface CropDialogProps {
 
 function centerAspectCrop(mediaWidth: number, mediaHeight: number, aspect: number): Crop {
   return centerCrop(
-    makeAspectCrop({ unit: '%', width: 90 }, aspect, mediaWidth, mediaHeight),
+    makeAspectCrop({ unit: 'px', width: mediaWidth * 0.9 }, aspect, mediaWidth, mediaHeight),
     mediaWidth,
     mediaHeight
   );
@@ -28,40 +28,26 @@ function centerAspectCrop(mediaWidth: number, mediaHeight: number, aspect: numbe
 
 export function CropDialog({ shape, onClose, onSave }: CropDialogProps) {
   const [crop, setCrop] = useState<Crop>();
-  const [completedCrop, setCompletedCrop] = useState<Crop>();
   const imgRef = useRef<HTMLImageElement>(null);
+  const imageToCrop = shape.originalHref || shape.href;
 
   const onImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
     const { width, height } = e.currentTarget;
-    const initialCrop = shape.crop 
-      ? {
-          unit: 'px' as const,
-          x: shape.crop.x,
-          y: shape.crop.y,
-          width: shape.crop.width,
-          height: shape.crop.height,
-        }
-      : centerAspectCrop(width, height, (shape.originalWidth || width) / (shape.originalHeight || height));
-    setCrop(initialCrop);
-    setCompletedCrop(initialCrop);
+    setCrop(centerAspectCrop(width, height, 1));
   };
 
   const handleSave = () => {
-    if (completedCrop && imgRef.current?.naturalWidth && imgRef.current?.naturalHeight) {
-        const scaleX = imgRef.current.naturalWidth / imgRef.current.width;
-        const scaleY = imgRef.current.naturalHeight / imgRef.current.height;
-
-        const cropInPixels = {
-            x: completedCrop.x * scaleX,
-            y: completedCrop.y * scaleY,
-            width: completedCrop.width * scaleX,
-            height: completedCrop.height * scaleY,
-        };
-        onSave(cropInPixels);
+    if (crop) {
+      onSave({
+        x: crop.x,
+        y: crop.y,
+        width: crop.width,
+        height: crop.height,
+      });
     }
   };
 
-  if (!shape.href) return null;
+  if (!imageToCrop) return null;
 
   return (
     <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
@@ -72,13 +58,12 @@ export function CropDialog({ shape, onClose, onSave }: CropDialogProps) {
         <div className="flex justify-center items-center p-4 bg-muted/40 rounded-md">
           <ReactCrop
             crop={crop}
-            onChange={(_, percentCrop) => setCrop(percentCrop)}
-            onComplete={(c) => setCompletedCrop(c)}
+            onChange={(c) => setCrop(c)}
           >
             <img
               ref={imgRef}
               alt="Crop preview"
-              src={shape.href}
+              src={imageToCrop}
               onLoad={onImageLoad}
               style={{ maxHeight: '70vh', objectFit: 'contain' }}
             />
@@ -88,7 +73,9 @@ export function CropDialog({ shape, onClose, onSave }: CropDialogProps) {
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={handleSave}>Save Crop</Button>
+          <Button onClick={handleSave} disabled={!crop || crop.width === 0}>
+            Save Crop
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -154,10 +154,13 @@ export function useKeyboardAndClipboard({
                           type: 'image',
                           name: 'Pasted Image',
                           href: dataUrl,
+                          originalHref: dataUrl,
                           x: center.x,
                           y: center.y,
                           width: img.naturalWidth,
                           height: img.naturalHeight,
+                          originalWidth: img.naturalWidth,
+                          originalHeight: img.naturalHeight,
                           rotation: 0,
                           opacity: 1,
                       };

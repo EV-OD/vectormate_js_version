@@ -167,12 +167,12 @@ export function RightSidebar({
             const updatedShape: ImageShape = {
                 ...(shape as ImageShape),
                 href: dataUrl,
+                originalHref: dataUrl,
                 lowQualityHref,
                 width: img.naturalWidth,
                 height: img.naturalHeight,
                 originalWidth: img.naturalWidth,
                 originalHeight: img.naturalHeight,
-                crop: undefined,
                 name: file.name
             };
             onShapesUpdate([updatedShape], true);

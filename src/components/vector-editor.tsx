@@ -119,18 +119,49 @@ export function VectorEditor() {
   const handleCropSave = (crop: { x: number; y: number; width: number; height: number; }) => {
     if (!croppingShape) return;
 
-    const newAspectRatio = crop.width / crop.height;
-    const newHeight = croppingShape.width / newAspectRatio;
-    
-    const updatedShape: ImageShape = {
-        ...croppingShape,
-        height: newHeight,
-        crop: crop
+    const imageSrc = croppingShape.originalHref || croppingShape.href;
+    if (!imageSrc) return;
+
+    const img = new window.Image();
+    img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = crop.width;
+        canvas.height = crop.height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        ctx.drawImage(img, crop.x, crop.y, crop.width, crop.height, 0, 0, crop.width, crop.height);
+        const newHref = canvas.toDataURL(img.src.startsWith('data:image/png') ? 'image/png' : 'image/jpeg');
+        
+        const previewCanvas = document.createElement('canvas');
+        const PREVIEW_WIDTH = 50;
+        const aspectRatio = crop.height / crop.width;
+        previewCanvas.width = PREVIEW_WIDTH;
+        previewCanvas.height = PREVIEW_WIDTH * aspectRatio;
+        const previewCtx = previewCanvas.getContext('2d');
+        previewCtx?.drawImage(canvas, 0, 0, previewCanvas.width, previewCanvas.height);
+        const lowQualityHref = previewCanvas.toDataURL('image/jpeg', 0.2);
+
+        const updatedShape: ImageShape = {
+            ...croppingShape,
+            href: newHref,
+            lowQualityHref,
+            originalHref: imageSrc,
+            width: crop.width,
+            height: crop.height,
+            originalWidth: crop.width,
+            originalHeight: crop.height,
+        };
+        
+        updateShapes([updatedShape]);
+        commit();
+        setCroppingImageId(null);
     };
-    
-    updateShapes([updatedShape]);
-    commit();
-    setCroppingImageId(null);
+    img.onerror = () => {
+        console.error("Failed to load image for cropping.");
+        setCroppingImageId(null);
+    }
+    img.src = imageSrc;
   };
 
   const isSingleImageSelected = selectedShapes.length === 1 && selectedShapes[0].type === 'image';

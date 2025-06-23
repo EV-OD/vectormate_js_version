@@ -206,28 +206,6 @@ export function Canvas(props: CanvasProps) {
                   );
                 }
 
-                if (imageShape.crop) {
-                    const viewBox = `${imageShape.crop.x} ${imageShape.crop.y} ${imageShape.crop.width} ${imageShape.crop.height}`;
-                    return (
-                        <svg
-                            key={imageShape.id}
-                            x={imageShape.x}
-                            y={imageShape.y}
-                            width={imageShape.width}
-                            height={imageShape.height}
-                            viewBox={viewBox}
-                            {...commonProps}
-                        >
-                            <image
-                                href={href}
-                                width={imageShape.originalWidth}
-                                height={imageShape.originalHeight}
-                                style={{ imageRendering, pointerEvents: 'none' }}
-                            />
-                        </svg>
-                    );
-                }
-
                 return <image key={imageShape.id} href={href} x={imageShape.x} y={imageShape.y} width={imageShape.width} height={imageShape.height} {...commonProps} style={{ imageRendering }}/>;
               }
               case 'svg': {

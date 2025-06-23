@@ -41,9 +41,9 @@ export interface ImageShape extends BaseShape {
   type: 'image';
   href?: string;
   lowQualityHref?: string;
+  originalHref?: string;
   originalWidth?: number;
   originalHeight?: number;
-  crop?: { x: number; y: number; width: number; height: number };
 }
 
 export interface SVGShape extends BaseShape {
