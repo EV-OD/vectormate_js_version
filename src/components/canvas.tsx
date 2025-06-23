@@ -270,10 +270,10 @@ export function Canvas(props: CanvasProps) {
         </g>
         <g>
           {activeSnapLines.vertical.map((lineX, i) => (
-              <line key={`v-${i}`} x1={lineX} y1="0" x2={lineX} y2="100%" stroke="hsl(var(--accent))" strokeWidth={0.5 / canvasView.scale} strokeDasharray={`${3 / canvasView.scale} ${3 / scale}`} />
+              <line key={`v-${i}`} x1={lineX} y1="0" x2={lineX} y2="100%" stroke="hsl(var(--accent))" strokeWidth={0.5 / canvasView.scale} strokeDasharray={`${3 / canvasView.scale} ${3 / canvasView.scale}`} />
           ))}
           {activeSnapLines.horizontal.map((lineY, i) => (
-              <line key={`h-${i}`} x1="0" y1={lineY} x2="100%" y2={lineY} stroke="hsl(var(--accent))" strokeWidth={0.5 / canvasView.scale} strokeDasharray={`${3 / canvasView.scale} ${3 / scale}`} />
+              <line key={`h-${i}`} x1="0" y1={lineY} x2="100%" y2={lineY} stroke="hsl(var(--accent))" strokeWidth={0.5 / canvasView.scale} strokeDasharray={`${3 / canvasView.scale} ${3 / canvasView.scale}`} />
           ))}
         </g>
         <g>
