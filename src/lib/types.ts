@@ -42,4 +42,6 @@ export type InteractionState =
 export type CanvasView = {
   background: 'solid' | 'grid' | 'dots';
   gridSize: number;
+  snapToGrid: boolean;
+  snapToObjects: boolean;
 };

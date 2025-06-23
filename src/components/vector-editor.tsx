@@ -89,6 +89,8 @@ export function VectorEditor() {
   const [canvasView, setCanvasView] = useState<CanvasView>({
     background: 'solid',
     gridSize: 20,
+    snapToGrid: true,
+    snapToObjects: true,
   });
 
   const handleViewChange = useCallback((viewUpdate: Partial<CanvasView>) => {

@@ -13,6 +13,9 @@ import { type CanvasView } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Label } from './ui/label';
 import { Slider } from './ui/slider';
+import { Switch } from './ui/switch';
+import { Separator } from './ui/separator';
+import { cn } from '@/lib/utils';
 
 
 type AppHeaderProps = {
@@ -55,6 +58,17 @@ export function AppHeader({ onExport, canvasView, onViewChange }: AppHeaderProps
               disabled={canvasView.background === 'solid'}
           />
           <span className="text-sm text-muted-foreground w-8 text-right">{canvasView.gridSize}</span>
+        </div>
+        <Separator orientation="vertical" className="h-6" />
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <Switch id="snap-grid" checked={canvasView.snapToGrid} onCheckedChange={(checked) => onViewChange({ snapToGrid: checked })} disabled={canvasView.background === 'solid'}/>
+            <Label htmlFor="snap-grid" className={cn(canvasView.background === 'solid' && 'text-muted-foreground')}>Snap to Grid</Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Switch id="snap-objects" checked={canvasView.snapToObjects} onCheckedChange={(checked) => onViewChange({ snapToObjects: checked })} />
+            <Label htmlFor="snap-objects">Snap to Objects</Label>
+          </div>
         </div>
       </div>
       

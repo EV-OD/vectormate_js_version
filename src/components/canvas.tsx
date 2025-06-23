@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useMemo } from 'react';
+import React, { useRef, useMemo, useState } from 'react';
 import { type Shape, type Tool, type InteractionState, type Handle, PolygonShape, ShapeType, CanvasView } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { nanoid } from 'nanoid';
@@ -21,6 +21,7 @@ type CanvasProps = {
 
 const SELECTION_COLOR = 'hsl(var(--primary))';
 const HANDLE_SIZE = 8;
+const SNAP_THRESHOLD = 6;
 
 function getHexagonPoints(width: number, height: number): string {
     const cx = width / 2;
@@ -51,6 +52,7 @@ export function Canvas({
   canvasView,
 }: CanvasProps) {
   const svgRef = useRef<SVGSVGElement>(null);
+  const [activeSnapLines, setActiveSnapLines] = useState<{ vertical: number[], horizontal: number[] }>({ vertical: [], horizontal: [] });
 
   const getMousePosition = (e: React.MouseEvent): { x: number; y: number } => {
     if (!svgRef.current) return { x: 0, y: 0 };
@@ -61,14 +63,64 @@ export function Canvas({
     return { x: 0, y: 0 };
   };
 
+  const getSnappedCoords = (x: number, y: number, ignoreIds: string[] = []) => {
+    let snappedX = x;
+    let snappedY = y;
+    const newActiveSnapLines: { vertical: number[]; horizontal: number[] } = { vertical: [], horizontal: [] };
+
+    if (canvasView.snapToObjects) {
+        const staticShapes = shapes.filter(s => !ignoreIds.includes(s.id));
+        const staticVLines = staticShapes.flatMap(s => [s.x, s.x + s.width / 2, s.x + s.width]);
+        const staticHLines = staticShapes.flatMap(s => [s.y, s.y + s.height / 2, s.y + s.height]);
+
+        let minVDelta = SNAP_THRESHOLD;
+        staticVLines.forEach(staticLine => {
+            const delta = Math.abs(x - staticLine);
+            if (delta < minVDelta) {
+                minVDelta = delta;
+                snappedX = staticLine;
+            }
+        });
+        if (minVDelta < SNAP_THRESHOLD) newActiveSnapLines.vertical.push(snappedX);
+
+        let minHDelta = SNAP_THRESHOLD;
+        staticHLines.forEach(staticLine => {
+            const delta = Math.abs(y - staticLine);
+            if (delta < minHDelta) {
+                minHDelta = delta;
+                snappedY = staticLine;
+            }
+        });
+        if (minHDelta < SNAP_THRESHOLD) newActiveSnapLines.horizontal.push(snappedY);
+    }
+    
+    if (canvasView.snapToGrid && canvasView.background !== 'solid') {
+      const { gridSize } = canvasView;
+      const gridSnappedX = Math.round(snappedX / gridSize) * gridSize;
+      const gridSnappedY = Math.round(snappedY / gridSize) * gridSize;
+
+      if (Math.abs(gridSnappedX - snappedX) < SNAP_THRESHOLD) {
+          snappedX = gridSnappedX;
+      }
+      if (Math.abs(gridSnappedY - snappedY) < SNAP_THRESHOLD) {
+          snappedY = gridSnappedY;
+      }
+    }
+    
+    return { x: snappedX, y: snappedY, snapLines: newActiveSnapLines };
+  };
+
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button !== 2) {
       setContextMenu(null);
     }
-    const { x, y } = getMousePosition(e);
+    const pos = getMousePosition(e);
     const target = e.target as SVGElement;
     const shapeId = target.dataset.shapeId;
     const handleName = target.dataset.handle as Handle;
+    
+    // Snapping is not needed on mousedown, only on move
+    const { x, y } = pos;
 
     if (activeTool === 'select') {
         if (handleName && selectedShapeIds.length > 0) {
@@ -91,7 +143,6 @@ export function Canvas({
             } else if (!isSelected) {
               setSelectedShapeIds([shapeId]);
             }
-            // Start moving only the selected shapes
             const affectedIds = e.shiftKey && !isSelected ? [...selectedShapeIds, shapeId] : (isSelected && e.shiftKey ? selectedShapeIds.filter(id => id !== shapeId) : [shapeId]);
             const initialShapes = shapes.filter(s => affectedIds.includes(s.id));
             setInteractionState({ type: 'moving', startX: x, startY: y, initialShapes });
@@ -114,23 +165,100 @@ export function Canvas({
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (interactionState.type === 'none') return;
-    const { x, y } = getMousePosition(e);
+    
+    const pos = getMousePosition(e);
+    let { x, y } = pos;
+    const newActiveSnapLines: { vertical: number[]; horizontal: number[] } = { vertical: [], horizontal: [] };
+    
     const dx = x - interactionState.startX;
     const dy = y - interactionState.startY;
 
     switch (interactionState.type) {
         case 'moving': {
-            const updated = interactionState.initialShapes.map(s => ({ ...s, x: s.x + dx, y: s.y + dy }));
+            let finalDx = dx;
+            let finalDy = dy;
+            const movingBounds = getBounds(interactionState.initialShapes);
+
+            if (canvasView.snapToObjects) {
+                const staticShapes = shapes.filter(s => !interactionState.initialShapes.some(is => is.id === s.id));
+                const staticVLines = staticShapes.flatMap(s => [s.x, s.x + s.width / 2, s.x + s.width]);
+                const staticHLines = staticShapes.flatMap(s => [s.y, s.y + s.height / 2, s.y + s.height]);
+                
+                const movingVLines = {
+                    left: movingBounds.x + dx,
+                    center: movingBounds.x + movingBounds.width / 2 + dx,
+                    right: movingBounds.x + movingBounds.width + dx,
+                };
+                const movingHLines = {
+                    top: movingBounds.y + dy,
+                    center: movingBounds.y + movingBounds.height / 2 + dy,
+                    bottom: movingBounds.y + movingBounds.height + dy,
+                };
+
+                let bestVSnap = { delta: SNAP_THRESHOLD, line: 0, newDx: finalDx };
+                staticVLines.forEach(staticLine => {
+                    Object.values(movingVLines).forEach(movingLine => {
+                        const delta = Math.abs(movingLine - staticLine);
+                        if (delta < bestVSnap.delta) {
+                            bestVSnap = { delta, line: staticLine, newDx: finalDx + (staticLine - movingLine) };
+                        }
+                    });
+                });
+                if (bestVSnap.delta < SNAP_THRESHOLD) {
+                    finalDx = bestVSnap.newDx;
+                    newActiveSnapLines.vertical.push(bestVSnap.line);
+                }
+
+                let bestHSnap = { delta: SNAP_THRESHOLD, line: 0, newDy: finalDy };
+                staticHLines.forEach(staticLine => {
+                    Object.values(movingHLines).forEach(movingLine => {
+                        const delta = Math.abs(movingLine - staticLine);
+                        if (delta < bestHSnap.delta) {
+                            bestHSnap = { delta, line: staticLine, newDy: finalDy + (staticLine - movingLine) };
+                        }
+                    });
+                });
+                if (bestHSnap.delta < SNAP_THRESHOLD) {
+                    finalDy = bestHSnap.newDy;
+                    newActiveSnapLines.horizontal.push(bestHSnap.line);
+                }
+            }
+
+            if (canvasView.snapToGrid && canvasView.background !== 'solid') {
+              const { gridSize } = canvasView;
+              const currentX = movingBounds.x + finalDx;
+              const currentY = movingBounds.y + finalDy;
+              
+              const snappedX = Math.round(currentX / gridSize) * gridSize;
+              const snappedY = Math.round(currentY / gridSize) * gridSize;
+              
+              if (Math.abs(snappedX - currentX) < SNAP_THRESHOLD) {
+                 finalDx += snappedX - currentX;
+              }
+              if (Math.abs(snappedY - currentY) < SNAP_THRESHOLD) {
+                 finalDy += snappedY - currentY;
+              }
+            }
+
+            const updated = interactionState.initialShapes.map(s => ({ ...s, x: s.x + finalDx, y: s.y + finalDy }));
             updateShapes(updated);
             break;
         }
         case 'drawing': {
+            const ignoreIds = [interactionState.currentShapeId];
+            const snapped = getSnappedCoords(x, y, ignoreIds);
+            x = snapped.x;
+            y = snapped.y;
+            newActiveSnapLines.vertical.push(...snapped.snapLines.vertical);
+            newActiveSnapLines.horizontal.push(...snapped.snapLines.horizontal);
+            
             const currentShape = shapes.find(s => s.id === interactionState.currentShapeId);
-            if (!currentShape) return;
-            const newWidth = Math.abs(dx);
-            const newHeight = Math.abs(dy);
-            const newX = dx > 0 ? interactionState.startX : x;
-            const newY = dy > 0 ? interactionState.startY : y;
+            if (!currentShape) break;
+
+            const newWidth = Math.abs(x - interactionState.startX);
+            const newHeight = Math.abs(y - interactionState.startY);
+            const newX = x > interactionState.startX ? interactionState.startX : x;
+            const newY = y > interactionState.startY ? interactionState.startY : y;
 
             let updatedProps: Partial<Shape> = { x: newX, y: newY, width: newWidth, height: newHeight };
             if (currentShape.type === 'polygon') {
@@ -140,15 +268,25 @@ export function Canvas({
             break;
         }
         case 'resizing': {
+            const ignoreIds = interactionState.initialShapes.map(s => s.id);
+            const snapped = getSnappedCoords(x, y, ignoreIds);
+            x = snapped.x;
+            y = snapped.y;
+            newActiveSnapLines.vertical.push(...snapped.snapLines.vertical);
+            newActiveSnapLines.horizontal.push(...snapped.snapLines.horizontal);
+
+            const snappedDx = x - interactionState.startX;
+            const snappedDy = y - interactionState.startY;
+
             const { initialShapes, handle } = interactionState;
             const initialBounds = getBounds(initialShapes);
 
             let newBounds = { ...initialBounds };
 
-            if (handle.includes('e')) newBounds.width = initialBounds.width + dx;
-            if (handle.includes('w')) { newBounds.width = initialBounds.width - dx; newBounds.x = initialBounds.x + dx; }
-            if (handle.includes('s')) newBounds.height = initialBounds.height + dy;
-            if (handle.includes('n')) { newBounds.height = initialBounds.height - dy; newBounds.y = initialBounds.y + dy; }
+            if (handle.includes('e')) newBounds.width = initialBounds.width + snappedDx;
+            if (handle.includes('w')) { newBounds.width = initialBounds.width - snappedDx; newBounds.x = initialBounds.x + snappedDx; }
+            if (handle.includes('s')) newBounds.height = initialBounds.height + snappedDy;
+            if (handle.includes('n')) { newBounds.height = initialBounds.height - snappedDy; newBounds.y = initialBounds.y + snappedDy; }
 
             if (e.shiftKey) {
                 const initialAspectRatio = initialBounds.height === 0 ? 1 : initialBounds.width / initialBounds.height;
@@ -187,14 +325,11 @@ export function Canvas({
                 const updatedShape: Shape = {...shape, x: newX, y: newY, width: newWidth, height: newHeight};
 
                 if (updatedShape.type === 'polygon') {
-                  const originalShape = initialShapes.find(s => s.id === shape.id) as PolygonShape;
-                  if (originalShape?.points) {
-                    const scaledPoints = originalShape.points.split(' ').map(p_str => {
-                        const [px, py] = p_str.split(',').map(Number);
-                        return `${px * scaleX},${py * scaleY}`;
-                    }).join(' ');
-                    (updatedShape as PolygonShape).points = scaledPoints;
-                  }
+                    const originalShape = initialShapes.find(s => s.id === shape.id) as PolygonShape;
+                    if (originalShape?.points) {
+                        const scaledPoints = getHexagonPoints(newWidth, newHeight);
+                        (updatedShape as PolygonShape).points = scaledPoints;
+                    }
                 }
                 return updatedShape;
             });
@@ -202,9 +337,12 @@ export function Canvas({
             break;
         }
     }
+    setActiveSnapLines(newActiveSnapLines);
   };
 
   const handleMouseUp = () => {
+    setActiveSnapLines({ vertical: [], horizontal: [] });
+
     const lastDrawnShape = interactionState.type === 'drawing' ? shapes.find(s => s.id === interactionState.currentShapeId) : null;
     if (lastDrawnShape && (lastDrawnShape.width === 0 || lastDrawnShape.height === 0)) {
         const width = 50, height = 50;
@@ -247,7 +385,6 @@ export function Canvas({
     const selected = shapes.filter(s => selectedShapeIds.includes(s.id));
     if (selected.length === 0) return null;
 
-    // Don't show resize handles for rotated objects for simplicity
     if (selected.some(s => s.rotation !== 0)) {
         return { ...getBounds(selected), resizable: false };
     }
@@ -298,18 +435,26 @@ export function Canvas({
             fillOpacity: shape.opacity,
             className: "transition-all duration-75"
           };
-          const { transform: rotateTransform, ...restProps } = commonProps;
 
           switch (shape.type) {
             case 'rectangle':
-              return <rect key={shape.id} x={shape.x} y={shape.y} width={shape.width} height={shape.height} {...restProps} transform={rotateTransform} />;
+              return <rect key={shape.id} x={shape.x} y={shape.y} width={shape.width} height={shape.height} {...commonProps} />;
             case 'circle':
-              return <ellipse key={shape.id} cx={shape.x + shape.width / 2} cy={shape.y + shape.height / 2} rx={shape.width / 2} ry={shape.height / 2} {...restProps} transform={rotateTransform} />;
+              return <ellipse key={shape.id} cx={shape.x + shape.width / 2} cy={shape.y + shape.height / 2} rx={shape.width / 2} ry={shape.height / 2} {...commonProps} />;
             case 'polygon': {
-                return <polygon key={shape.id} points={shape.points} transform={`translate(${shape.x} ${shape.y}) ${rotateTransform}`} {...restProps} />;
+                const { transform, ...rest } = commonProps;
+                return <polygon key={shape.id} points={shape.points} transform={`translate(${shape.x} ${shape.y}) ${transform}`} {...rest} />;
               }
           }
         })}
+      </g>
+      <g>
+        {activeSnapLines.vertical.map((lineX, i) => (
+            <line key={`v-${i}`} x1={lineX} y1="0" x2={lineX} y2="100%" stroke="hsl(var(--accent))" strokeWidth="0.5" strokeDasharray="3 3" />
+        ))}
+        {activeSnapLines.horizontal.map((lineY, i) => (
+            <line key={`h-${i}`} x1="0" y1={lineY} x2="100%" y2={lineY} stroke="hsl(var(--accent))" strokeWidth="0.5" strokeDasharray="3 3" />
+        ))}
       </g>
       <g>
         {selectionBox && (
