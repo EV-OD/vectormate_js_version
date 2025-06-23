@@ -175,7 +175,7 @@ export function Canvas(props: CanvasProps) {
                 const imageShape = rest as ImageShape;
                 if (!imageShape.href) {
                   return (
-                    <g {...commonProps}>
+                    <g key={rest.id} {...commonProps}>
                       <rect
                         x={imageShape.x}
                         y={imageShape.y}
@@ -197,6 +197,10 @@ export function Canvas(props: CanvasProps) {
                   );
                 }
 
+                if (isSelectedForInteraction) {
+                    return <rect key={rest.id} x={rest.x} y={rest.y} width={rest.width} height={rest.height} fill="hsl(var(--primary) / 0.3)" stroke="hsl(var(--primary))" strokeDasharray="4" strokeWidth={1 / canvasView.scale} {...commonProps} />;
+                }
+                
                 const href = (isInteracting && imageShape.lowQualityHref) ? imageShape.lowQualityHref : imageShape.href;
                 const imageRendering = (isInteracting && imageShape.lowQualityHref) ? "pixelated" : "auto";
 
@@ -207,8 +211,7 @@ export function Canvas(props: CanvasProps) {
                  if (isSelectedForInteraction) {
                     return <rect key={rest.id} x={rest.x} y={rest.y} width={rest.width} height={rest.height} fill="hsl(var(--primary) / 0.3)" stroke="hsl(var(--primary))" strokeDasharray="4" strokeWidth={1 / canvasView.scale} {...commonProps} />;
                 }
-                const svgHref = dataUrl || `data:image/svg+xml;base64,${typeof window !== 'undefined' ? window.btoa(unescape(encodeURIComponent(svgString))) : ''}`;
-                return <image key={rest.id} href={svgHref} x={rest.x} y={rest.y} width={rest.width} height={rest.height} {...commonProps} />;
+                return <image key={rest.id} href={dataUrl} x={rest.x} y={rest.y} width={rest.width} height={rest.height} {...commonProps} />;
               }
               case 'path': {
                   const pathShape = rest as PathShape;
@@ -265,10 +268,10 @@ export function Canvas(props: CanvasProps) {
         </g>
         <g>
           {activeSnapLines.vertical.map((lineX, i) => (
-              <line key={`v-${i}`} x1={lineX} y1="0" x2={lineX} y2="100%" stroke="hsl(var(--accent))" strokeWidth={0.5 / canvasView.scale} strokeDasharray={`${3 / canvasView.scale} ${3 / canvasView.scale}`} />
+              <line key={`v-${i}`} x1={lineX} y1="0" x2={lineX} y2="100%" stroke="hsl(var(--accent))" strokeWidth={0.5 / canvasView.scale} strokeDasharray={`${3 / canvasView.scale} ${3 / scale}`} />
           ))}
           {activeSnapLines.horizontal.map((lineY, i) => (
-              <line key={`h-${i}`} x1="0" y1={lineY} x2="100%" y2={lineY} stroke="hsl(var(--accent))" strokeWidth={0.5 / canvasView.scale} strokeDasharray={`${3 / canvasView.scale} ${3 / canvasView.scale}`} />
+              <line key={`h-${i}`} x1="0" y1={lineY} x2="100%" y2={lineY} stroke="hsl(var(--accent))" strokeWidth={0.5 / canvasView.scale} strokeDasharray={`${3 / canvasView.scale} ${3 / scale}`} />
           ))}
         </g>
         <g>
