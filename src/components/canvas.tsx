@@ -30,6 +30,7 @@ export function Canvas(props: CanvasProps) {
     svgRef,
     activeSnapLines,
     marquee,
+    draftShapes,
     handleMouseDown,
     handleMouseMove,
     handleMouseUp,
@@ -37,23 +38,28 @@ export function Canvas(props: CanvasProps) {
     handleWheel
   } = useCanvasInteractions(props);
 
-  const selectionBox = useMemo(() => {
-    if (selectedShapeIds.length === 0) return null;
-    const selected = shapes.filter(s => selectedShapeIds.includes(s.id));
-    if (selected.length === 0) return null;
-    
-    const rotatable = selected.length > 0;
+  const shapesToRender = useMemo(() => {
+    const draftIds = new Set(draftShapes.map(d => d.id));
+    const staticShapes = shapes.filter(s => !draftIds.has(s.id));
+    return [...staticShapes, ...draftShapes];
+  }, [shapes, draftShapes]);
 
-    if (selected.length === 1) {
-        const shape = selected[0];
+  const selectionBox = useMemo(() => {
+    const activeShapes = draftShapes.length > 0 ? draftShapes : shapes.filter(s => selectedShapeIds.includes(s.id));
+    if (activeShapes.length === 0) return null;
+    
+    const rotatable = activeShapes.length > 0;
+
+    if (activeShapes.length === 1) {
+        const shape = activeShapes[0];
         const bounds = { x: shape.x, y: shape.y, width: shape.width, height: shape.height };
         return { bounds, resizable: true, rotatable, rotation: shape.rotation };
     } else {
-        const bounds = getBounds(selected);
+        const bounds = getBounds(activeShapes);
         // Resizing multiple objects, especially rotated ones, is complex. Disable for now.
         return { bounds, resizable: false, rotatable, rotation: 0 };
     }
-  }, [shapes, selectedShapeIds]);
+  }, [shapes, draftShapes, selectedShapeIds]);
 
   return (
     <svg
@@ -100,12 +106,11 @@ export function Canvas(props: CanvasProps) {
             data-shape-id="background"
         />
         <g>
-          {shapes.map(shape => {
+          {shapesToRender.map(shape => {
             const { ...rest } = shape;
             const commonProps: any = {
               'data-shape-id': rest.id,
               transform: `rotate(${rest.rotation} ${rest.x + rest.width / 2} ${rest.y + rest.height / 2})`,
-              className: "transition-all duration-75"
             };
             
             if (rest.type !== 'line') {

@@ -40,6 +40,7 @@ export function useCanvasInteractions({
   const svgRef = useRef<SVGSVGElement>(null);
   const [activeSnapLines, setActiveSnapLines] = useState<{ vertical: number[], horizontal: number[] }>({ vertical: [], horizontal: [] });
   const [marquee, setMarquee] = useState<{ x: number; y: number; width: number; height: number; } | null>(null);
+  const [draftShapes, setDraftShapes] = useState<Shape[]>([]);
 
   const getScreenPosition = useCallback((e: React.MouseEvent | React.WheelEvent): { x: number; y: number } => {
     if (!svgRef.current) return { x: 0, y: 0 };
@@ -63,9 +64,10 @@ export function useCanvasInteractions({
     let snappedY = y;
     const newActiveSnapLines: { vertical: number[]; horizontal: number[] } = { vertical: [], horizontal: [] };
     const snapThresholdWithZoom = SNAP_THRESHOLD / canvasView.scale;
+    const allShapes = [...shapes, ...draftShapes]; // Snap against all visible shapes
 
     if (canvasView.snapToObjects) {
-        const staticShapes = shapes.filter(s => !ignoreIds.includes(s.id));
+        const staticShapes = allShapes.filter(s => !ignoreIds.includes(s.id));
         const staticVLines = staticShapes.flatMap(s => [s.x, s.x + s.width / 2, s.x + s.width]);
         const staticHLines = staticShapes.flatMap(s => [s.y, s.y + s.height / 2, s.y + s.height]);
 
@@ -104,7 +106,7 @@ export function useCanvasInteractions({
     }
     
     return { x: snappedX, y: snappedY, snapLines: newActiveSnapLines };
-  }, [shapes, canvasView]);
+  }, [shapes, draftShapes, canvasView]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (e.button !== 2) {
@@ -118,9 +120,10 @@ export function useCanvasInteractions({
     const { x, y } = pos;
 
     if (activeTool === 'select') {
-        if (handleName && selectedShapeIds.length > 0) {
+        const initialShapes = shapes.filter(s => selectedShapeIds.includes(s.id));
+        if (handleName && initialShapes.length > 0) {
             e.stopPropagation();
-            const initialShapes = shapes.filter(s => selectedShapeIds.includes(s.id));
+            setDraftShapes(initialShapes);
             if (handleName === 'rotate') {
                 const bounds = getBounds(initialShapes);
                 setInteractionState({
@@ -147,8 +150,9 @@ export function useCanvasInteractions({
                 : (!isSelected ? [shapeId] : selectedShapeIds);
 
             setSelectedShapeIds(newSelectedIds);
-            const initialShapes = shapes.filter(s => newSelectedIds.includes(s.id));
-            setInteractionState({ type: 'moving', startX: x, startY: y, initialShapes });
+            const movingShapes = shapes.filter(s => newSelectedIds.includes(s.id));
+            setDraftShapes(movingShapes);
+            setInteractionState({ type: 'moving', startX: x, startY: y, initialShapes: movingShapes });
         } else { // Background click
             if (e.ctrlKey || e.metaKey) {
                 setInteractionState({ type: 'marquee', startX: x, startY: y });
@@ -174,13 +178,15 @@ export function useCanvasInteractions({
             stroke: '#ffffff',
             strokeWidth: 2,
             fill: 'none',
+            fillOpacity: 1,
+            strokeOpacity: 1,
             d: 'M 0 0',
         };
-        addShape(newShape, false);
+        setDraftShapes([newShape]);
         setInteractionState({ type: 'brushing', currentShapeId: newShape.id, points: [{ x, y }] });
     } else {
         const shapeName = activeTool.charAt(0).toUpperCase() + activeTool.slice(1);
-        const commonProps = { id: nanoid(), name: shapeName, x, y, width: 0, height: 0, rotation: 0, opacity: 1 };
+        const commonProps = { id: nanoid(), name: shapeName, x, y, width: 0, height: 0, rotation: 0, opacity: 1, fillOpacity: 1, strokeOpacity: 1 };
         let newShape: Shape;
         
         if(activeTool === 'polygon') {
@@ -190,10 +196,10 @@ export function useCanvasInteractions({
         } else {
             newShape = { ...commonProps, type: activeTool as 'rectangle' | 'circle', fill: '#cccccc', strokeWidth: 0 };
         }
-      addShape(newShape, false);
+      setDraftShapes([newShape]);
       setInteractionState({ type: 'drawing', shapeType: activeTool, startX: x, startY: y, currentShapeId: newShape.id });
     }
-  }, [getMousePosition, activeTool, selectedShapeIds, shapes, setSelectedShapeIds, getScreenPosition, canvasView.pan, setContextMenu, setInteractionState, addShape]);
+  }, [getMousePosition, activeTool, selectedShapeIds, shapes, setSelectedShapeIds, getScreenPosition, canvasView.pan, setContextMenu, setInteractionState]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (interactionState.type === 'none') return;
@@ -285,7 +291,7 @@ export function useCanvasInteractions({
             }
 
             const updated = interactionState.initialShapes.map(s => ({ ...s, x: s.x + finalDx, y: s.y + finalDy }));
-            updateShapes(updated);
+            setDraftShapes(updated);
             break;
         }
         case 'drawing': {
@@ -296,7 +302,7 @@ export function useCanvasInteractions({
             newActiveSnapLines.vertical.push(...snapped.snapLines.vertical);
             newActiveSnapLines.horizontal.push(...snapped.snapLines.horizontal);
             
-            const currentShape = shapes.find(s => s.id === interactionState.currentShapeId);
+            const currentShape = draftShapes.find(s => s.id === interactionState.currentShapeId);
             if (!currentShape) break;
 
             let newWidth = Math.abs(x - interactionState.startX);
@@ -320,17 +326,16 @@ export function useCanvasInteractions({
             if (currentShape.type === 'polygon') {
                 (updatedProps as PolygonShape).points = getHexagonPoints(newWidth, newHeight);
             }
-            updateShapes([{ ...currentShape, ...updatedProps }]);
+            setDraftShapes([{ ...currentShape, ...updatedProps }]);
             break;
         }
         case 'resizing': {
             const { initialShapes, handle } = interactionState;
-            if (initialShapes.length !== 1) break; // Should not happen with new UI logic, but good practice
+            if (initialShapes.length !== 1) break; 
             
             const initialShape = initialShapes[0];
 
             if (initialShape.rotation === 0) {
-                 // Standard logic for un-rotated shapes (supports aspect ratio lock)
                 const { x: sx, y: sy } = getSnappedCoords(x, y, [initialShape.id]);
                 const snappedDx = sx - interactionState.startX;
                 const snappedDy = sy - interactionState.startY;
@@ -378,10 +383,9 @@ export function useCanvasInteractions({
                         updatedShape.height
                     );
                 }
-                updateShapes([updatedShape]);
+                setDraftShapes([updatedShape]);
 
             } else {
-                // Special logic for rotated shapes
                 const angleRad = initialShape.rotation * (Math.PI / 180);
                 const cos = Math.cos(angleRad);
                 const sin = Math.sin(angleRad);
@@ -430,7 +434,7 @@ export function useCanvasInteractions({
                         newHeight
                     );
                 }
-                updateShapes([updatedShape]);
+                setDraftShapes([updatedShape]);
             }
             break;
         }
@@ -472,7 +476,7 @@ export function useCanvasInteractions({
                 return { ...shape, rotation: newRotation };
             });
 
-            updateShapes(updated);
+            setDraftShapes(updated);
             break;
         }
         case 'marquee': {
@@ -484,13 +488,13 @@ export function useCanvasInteractions({
             break;
         }
         case 'brushing': {
-            const currentShape = shapes.find(s => s.id === interactionState.currentShapeId);
+            const currentShape = draftShapes.find(s => s.id === interactionState.currentShapeId);
             if (!currentShape || currentShape.type !== 'path') break;
             
             const relX = x - currentShape.x;
             const relY = y - currentShape.y;
             const updatedD = currentShape.d + ` L ${relX.toFixed(2)} ${relY.toFixed(2)}`;
-            updateShapes([{ ...currentShape, d: updatedD }]);
+            setDraftShapes([{ ...currentShape, d: updatedD }]);
             
             setInteractionState({
                 ...interactionState,
@@ -500,11 +504,55 @@ export function useCanvasInteractions({
         }
     }
     setActiveSnapLines(newActiveSnapLines);
-  }, [interactionState, getScreenPosition, onViewChange, getMousePosition, canvasView, shapes, updateShapes, getSnappedCoords, setMarquee, setActiveSnapLines, setInteractionState]);
+  }, [interactionState, getScreenPosition, onViewChange, getMousePosition, canvasView, shapes, getSnappedCoords, setMarquee, setActiveSnapLines, setInteractionState, draftShapes]);
 
   const handleMouseUp = useCallback((e: React.MouseEvent) => {
-    if (interactionState.type === 'brushing') {
-        const shape = shapes.find(s => s.id === interactionState.currentShapeId);
+    if (interactionState.type === 'marquee' && marquee) {
+        const isShapeInMarquee = (shape: Shape, marqueeBox: typeof marquee) => {
+            if (!marqueeBox) return false;
+            const shapeRight = shape.x + shape.width;
+            const shapeBottom = shape.y + shape.height;
+            const marqueeRight = marqueeBox.x + marqueeBox.width;
+            const marqueeBottom = marqueeBox.y + marqueeBox.height;
+            return (
+                shape.x < marqueeRight &&
+                shapeRight > marqueeBox.x &&
+                shape.y < marqueeBottom &&
+                shapeBottom > marqueeBox.y
+            );
+        };
+        const idsInMarquee = shapes.filter(s => isShapeInMarquee(s, marquee)).map(s => s.id);
+        
+        if (e.shiftKey) {
+            const currentSelection = new Set(selectedShapeIds);
+            idsInMarquee.forEach(id => currentSelection.add(id));
+            setSelectedShapeIds(Array.from(currentSelection));
+        } else {
+            setSelectedShapeIds(idsInMarquee);
+        }
+    }
+
+    if (['moving', 'resizing', 'rotating'].includes(interactionState.type)) {
+      updateShapes(draftShapes);
+      commitUpdate();
+    } else if (interactionState.type === 'drawing') {
+        const lastDrawnShape = draftShapes.find(s => s.id === interactionState.currentShapeId);
+        if (lastDrawnShape) {
+            if (lastDrawnShape.width < 1 && lastDrawnShape.height < 1) {
+                const width = 50, height = 50;
+                let updatedShape: Shape = {...lastDrawnShape, width: width, height: height, x: lastDrawnShape.x - 25, y: lastDrawnShape.y - 25}
+                if (updatedShape.type === 'polygon') {
+                    (updatedShape as PolygonShape).points = getHexagonPoints(width, height);
+                } else if (updatedShape.type === 'line') {
+                    updatedShape.height = 0;
+                }
+                addShape(updatedShape, true);
+            } else {
+                addShape(lastDrawnShape, true);
+            }
+        }
+    } else if (interactionState.type === 'brushing') {
+        const shape = draftShapes.find(s => s.id === interactionState.currentShapeId);
         const points = interactionState.points;
         if (shape && shape.type === 'path' && points.length > 1) {
             let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
@@ -530,60 +578,21 @@ export function useCanvasInteractions({
                 height: maxY - minY,
                 d: relativeD,
             };
-            updateShapes([finalShape]);
+            addShape(finalShape, true);
         }
     }
 
-    if (interactionState.type === 'marquee' && marquee) {
-        const isShapeInMarquee = (shape: Shape, marqueeBox: typeof marquee) => {
-            if (!marqueeBox) return false;
-            const shapeRight = shape.x + shape.width;
-            const shapeBottom = shape.y + shape.height;
-            const marqueeRight = marqueeBox.x + marqueeBox.width;
-            const marqueeBottom = marqueeBox.y + marqueeBox.height;
-            return (
-                shape.x < marqueeRight &&
-                shapeRight > marqueeBox.x &&
-                shape.y < marqueeBottom &&
-                shapeBottom > marqueeBox.y
-            );
-        };
-        const idsInMarquee = shapes.filter(s => isShapeInMarquee(s, marquee)).map(s => s.id);
-        
-        if (e.shiftKey) {
-            const currentSelection = new Set(selectedShapeIds);
-            idsInMarquee.forEach(id => currentSelection.add(id));
-            setSelectedShapeIds(Array.from(currentSelection));
-        } else {
-            setSelectedShapeIds(idsInMarquee);
-        }
-    }
     setMarquee(null);
     setActiveSnapLines({ vertical: [], horizontal: [] });
+    setDraftShapes([]);
 
-    if (['moving', 'resizing', 'rotating', 'drawing', 'brushing'].includes(interactionState.type)) {
-        commitUpdate();
-    }
-    
-    const lastDrawnShape = interactionState.type === 'drawing' ? shapes.find(s => s.id === interactionState.currentShapeId) : null;
-    if (lastDrawnShape && (lastDrawnShape.width === 0 && lastDrawnShape.height === 0)) {
-        const width = 50, height = 50;
-        let updatedShape: Shape = {...lastDrawnShape, width: width, height: height, x: lastDrawnShape.x - 25, y: lastDrawnShape.y - 25}
-        if (updatedShape.type === 'polygon') {
-            updatedShape.points = getHexagonPoints(width, height);
-        } else if (updatedShape.type === 'line') {
-            updatedShape.height = 0;
-        }
-        updateShapes([updatedShape])
-    }
-
-    if (interactionState.type !== 'none') {
+    if (interactionState.type !== 'none' && interactionState.type !== 'panning') {
         setInteractionState({ type: 'none' });
     }
-    if (activeTool !== 'select') {
+    if (activeTool !== 'select' && !e.shiftKey) {
         setActiveTool('select');
     }
-  }, [interactionState, marquee, shapes, selectedShapeIds, setSelectedShapeIds, updateShapes, setInteractionState, activeTool, setActiveTool, commitUpdate]);
+  }, [interactionState, marquee, shapes, selectedShapeIds, setSelectedShapeIds, draftShapes, addShape, updateShapes, commitUpdate, setInteractionState, activeTool, setActiveTool]);
 
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -628,6 +637,7 @@ export function useCanvasInteractions({
     svgRef,
     activeSnapLines,
     marquee,
+    draftShapes,
     handleMouseDown,
     handleMouseMove,
     handleMouseUp,
