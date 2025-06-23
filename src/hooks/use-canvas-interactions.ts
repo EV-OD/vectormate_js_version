@@ -171,8 +171,8 @@ export function useCanvasInteractions({
             height: 0,
             rotation: 0,
             opacity: 1,
-            stroke: '#000000',
-            strokeWidth: 4,
+            stroke: '#ffffff',
+            strokeWidth: 2,
             fill: 'none',
             d: 'M 0 0',
         };
@@ -186,7 +186,7 @@ export function useCanvasInteractions({
         if(activeTool === 'polygon') {
             newShape = { ...commonProps, type: 'polygon', points: '', fill: '#cccccc', strokeWidth: 0 };
         } else if (activeTool === 'line') {
-            newShape = { ...commonProps, type: 'line', stroke: '#000000', strokeWidth: 2 };
+            newShape = { ...commonProps, type: 'line', stroke: '#ffffff', strokeWidth: 2 };
         } else {
             newShape = { ...commonProps, type: activeTool as 'rectangle' | 'circle', fill: '#cccccc', strokeWidth: 0 };
         }

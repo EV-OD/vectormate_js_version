@@ -139,7 +139,23 @@ export function Canvas(props: CanvasProps) {
                   return <polygon key={rest.id} points={rest.points} transform={`translate(${rest.x} ${rest.y}) ${polyTransform}`} {...polyProps} />;
               }
               case 'line': {
-                  return <line key={rest.id} x1={rest.x} y1={rest.y} x2={rest.x + rest.width} y2={rest.y + rest.height} {...commonProps} />;
+                  const HIT_AREA_PADDING = 10;
+                  return (
+                      <g key={rest.id}>
+                          {/* Visible line */}
+                          <line x1={rest.x} y1={rest.y} x2={rest.x + rest.width} y2={rest.y + rest.height} {...commonProps} />
+                          {/* Invisible hit area */}
+                          <line
+                              x1={rest.x} y1={rest.y}
+                              x2={rest.x + rest.width} y2={rest.y + rest.height}
+                              transform={commonProps.transform}
+                              data-shape-id={rest.id}
+                              stroke="transparent"
+                              strokeWidth={(rest.strokeWidth || 0) + HIT_AREA_PADDING}
+                              className="cursor-pointer"
+                          />
+                      </g>
+                  );
               }
               case 'image': {
                 const { href } = rest as ImageShape;
@@ -155,13 +171,28 @@ export function Canvas(props: CanvasProps) {
                   const { transform: pathTransform, ...pathProps } = commonProps;
                   pathProps.strokeLinecap = "round";
                   pathProps.strokeLinejoin = "round";
+                  const HIT_AREA_PADDING = 10;
+                  const transform = `translate(${rest.x} ${rest.y}) ${pathTransform}`;
+                  
                   return (
-                    <path
-                        key={rest.id}
-                        d={pathShape.d}
-                        transform={`translate(${rest.x} ${rest.y}) ${pathTransform}`}
-                        {...pathProps}
-                    />
+                      <g key={rest.id}>
+                          <path
+                              d={pathShape.d}
+                              transform={transform}
+                              {...pathProps}
+                          />
+                          <path
+                              d={pathShape.d}
+                              transform={transform}
+                              data-shape-id={rest.id}
+                              stroke="transparent"
+                              fill="none"
+                              strokeWidth={(pathShape.strokeWidth || 0) + HIT_AREA_PADDING}
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              className="cursor-pointer"
+                          />
+                      </g>
                   );
               }
             }
