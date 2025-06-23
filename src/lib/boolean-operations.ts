@@ -17,6 +17,8 @@ const wasmReady = new Promise<void>((resolve, reject) => {
 });
 
 function shapeToPoints(shape: Shape): PointD[] {
+    if (!wasmModule) throw new Error("WASM module not initialized");
+
     const angleRad = shape.rotation * (Math.PI / 180);
     const cos = Math.cos(angleRad);
     const sin = Math.sin(angleRad);
@@ -64,12 +66,13 @@ function shapeToPoints(shape: Shape): PointD[] {
 }
 
 function pathsToShape(paths: PathsD, fill: string): PolygonShape | null {
-    if (wasmModule!.areaOfPathsD(paths) === 0) {
+    if (!wasmModule) throw new Error("WASM module not initialized");
+    if (wasmModule.areaOfPathsD(paths) === 0) {
         paths.delete();
         return null;
     }
 
-    const path = wasmModule!.getSinglePath(paths);
+    const path = wasmModule.getSinglePath(paths);
     paths.delete();
 
     if (!path || path.size() === 0) {
@@ -137,17 +140,21 @@ async function performWasmOperation(shape1: Shape, shape2: Shape, opType: ClipTy
 }
 
 export async function union(shape1: Shape, shape2: Shape): Promise<PolygonShape | null> {
-    return performWasmOperation(shape1, shape2, ClipType.Union);
+    if (!wasmModule) await wasmReady;
+    return performWasmOperation(shape1, shape2, wasmModule!.ClipType.Union);
 }
 
 export async function subtract(subjectShape: Shape, clipperShape: Shape): Promise<PolygonShape | null> {
-    return performWasmOperation(subjectShape, clipperShape, ClipType.Difference);
+    if (!wasmModule) await wasmReady;
+    return performWasmOperation(subjectShape, clipperShape, wasmModule!.ClipType.Difference);
 }
 
 export async function intersect(shape1: Shape, shape2: Shape): Promise<PolygonShape | null> {
-    return performWasmOperation(shape1, shape2, ClipType.Intersect);
+    if (!wasmModule) await wasmReady;
+    return performWasmOperation(shape1, shape2, wasmModule!.ClipType.Intersect);
 }
 
 export async function exclude(shape1: Shape, shape2: Shape): Promise<PolygonShape | null> {
-    return performWasmOperation(shape1, shape2, ClipType.Xor);
+    if (!wasmModule) await wasmReady;
+    return performWasmOperation(shape1, shape2, wasmModule!.ClipType.Xor);
 }
