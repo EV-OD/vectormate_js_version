@@ -27,6 +27,10 @@ export function VectorEditor() {
     duplicateShapes,
     reorderShapes,
     renameShape,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
   } = useEditorState();
   
   const [activeTool, setActiveTool] = useState<Tool>('select');
@@ -63,7 +67,9 @@ export function VectorEditor() {
     setSelectedShapeIds,
     deleteSelectedShapes,
     setActiveTool,
-    setInteractionState
+    setInteractionState,
+    undo,
+    redo
   });
 
   const handleExport = (format: 'svg' | 'jpeg') => {

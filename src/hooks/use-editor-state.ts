@@ -5,12 +5,22 @@ import { type Shape } from '@/lib/types';
 import { useToast } from './use-toast';
 import { nanoid } from 'nanoid';
 
-type EditorState = {
+const HISTORY_LIMIT = 20;
+
+type HistoryData = {
   shapes: Shape[];
   selectedShapeIds: string[];
 };
 
+type EditorState = {
+  past: HistoryData[];
+  present: HistoryData;
+  future: HistoryData[];
+};
+
 type Action =
+  | { type: 'UNDO' }
+  | { type: 'REDO' }
   | { type: 'ADD_SHAPE'; payload: Shape }
   | { type: 'UPDATE_SHAPES'; payload: Shape[] }
   | { type: 'DELETE_SHAPES'; payload: string[] }
@@ -22,117 +32,154 @@ type Action =
   | { type: 'REORDER_SHAPES'; payload: { fromId: string; toId: string; position: 'top' | 'bottom' } }
   | { type: 'RENAME_SHAPE'; payload: { id: string; name: string } };
 
+const initialState: EditorState = {
+  past: [],
+  present: {
+    shapes: [],
+    selectedShapeIds: [],
+  },
+  future: [],
+};
+
 function editorReducer(state: EditorState, action: Action): EditorState {
+  const { past, present, future } = state;
+
   switch (action.type) {
-    case 'ADD_SHAPE': {
-      const shape = action.payload;
-      if (!shape.name) {
-        shape.name = shape.type.charAt(0).toUpperCase() + shape.type.slice(1);
-      }
-      return { ...state, shapes: [...state.shapes, shape] };
-    }
-    case 'UPDATE_SHAPES':
-        return {
-            ...state,
-            shapes: state.shapes.map(s => {
-                const updated = action.payload.find(us => us.id === s.id);
-                return updated ? updated : s;
-            }),
-        };
-    case 'DELETE_SHAPES':
-      return {
-        ...state,
-        shapes: state.shapes.filter(s => !action.payload.includes(s.id)),
-        selectedShapeIds: state.selectedShapeIds.filter(id => !action.payload.includes(id)),
-      };
     case 'SET_SELECTED_SHAPES':
-      return { ...state, selectedShapeIds: action.payload };
-    case 'APPLY_BOOLEAN': {
-      const { shapes } = action.payload;
-      const otherShapes = state.shapes.filter(s => !shapes.map(ss => ss.id).includes(s.id));
-      if (shapes.length < 2) return state;
-      const [shape1] = shapes;
-      
       return {
         ...state,
-        shapes: [...otherShapes, shape1],
-        selectedShapeIds: [shape1.id],
-      }
-    }
-    case 'BRING_TO_FRONT': {
-      const toMove = state.shapes.filter(s => action.payload.includes(s.id));
-      const others = state.shapes.filter(s => !action.payload.includes(s.id));
-      return { ...state, shapes: [...others, ...toMove] };
-    }
-    case 'SEND_TO_BACK': {
-      const toMove = state.shapes.filter(s => action.payload.includes(s.id));
-      const others = state.shapes.filter(s => !action.payload.includes(s.id));
-      return { ...state, shapes: [...toMove, ...others] };
-    }
-    case 'DUPLICATE_SHAPES': {
-      const shapesToDuplicate = state.shapes.filter(s => action.payload.includes(s.id));
-      if (shapesToDuplicate.length === 0) return state;
-
-      const newShapes = shapesToDuplicate.map(shape => ({
-        ...shape,
-        id: nanoid(),
-        name: `${shape.name || shape.type} copy`,
-        x: shape.x + 10,
-        y: shape.y + 10,
-      }));
-
+        present: { ...present, selectedShapeIds: action.payload },
+      };
+    case 'UNDO': {
+      if (past.length === 0) return state;
+      const previous = past[past.length - 1];
+      const newPast = past.slice(0, past.length - 1);
       return {
-        ...state,
-        shapes: [...state.shapes, ...newShapes],
-        selectedShapeIds: newShapes.map(s => s.id),
+        past: newPast,
+        present: previous,
+        future: [present, ...future],
       };
     }
-    case 'REORDER_SHAPES': {
-      const { fromId, toId, position } = action.payload;
-      const reversedShapes = [...state.shapes].reverse();
-      
-      const fromIndex = reversedShapes.findIndex(s => s.id === fromId);
-      let toIndex = reversedShapes.findIndex(s => s.id === toId);
-
-      if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return state;
-      
-      const [movedItem] = reversedShapes.splice(fromIndex, 1);
-      
-      if (fromIndex < toIndex) {
-          toIndex--;
-      }
-      
-      if (position === 'top') {
-          reversedShapes.splice(toIndex, 0, movedItem);
-      } else { // 'bottom'
-          reversedShapes.splice(toIndex + 1, 0, movedItem);
-      }
-
-      return { ...state, shapes: reversedShapes.reverse() };
+    case 'REDO': {
+      if (future.length === 0) return state;
+      const next = future[0];
+      const newFuture = future.slice(1);
+      return {
+        past: [...past, present],
+        present: next,
+        future: newFuture,
+      };
     }
-    case 'RENAME_SHAPE':
+  }
+
+  const newPresent = ((): HistoryData => {
+    switch (action.type) {
+      case 'ADD_SHAPE': {
+        const shape = action.payload;
+        if (!shape.name) {
+          shape.name = shape.type.charAt(0).toUpperCase() + shape.type.slice(1);
+        }
+        return { ...present, shapes: [...present.shapes, shape], selectedShapeIds: [shape.id] };
+      }
+      case 'UPDATE_SHAPES':
         return {
-          ...state,
-          shapes: state.shapes.map(s =>
+          ...present,
+          shapes: present.shapes.map(s => {
+            const updated = action.payload.find(us => us.id === s.id);
+            return updated ? updated : s;
+          }),
+        };
+      case 'DELETE_SHAPES':
+        return {
+          shapes: present.shapes.filter(s => !action.payload.includes(s.id)),
+          selectedShapeIds: [],
+        };
+      case 'APPLY_BOOLEAN': {
+        const { shapes } = action.payload;
+        const otherShapes = present.shapes.filter(s => !shapes.map(ss => ss.id).includes(s.id));
+        if (shapes.length < 2) return present;
+        const [shape1] = shapes;
+        return {
+          shapes: [...otherShapes, shape1],
+          selectedShapeIds: [shape1.id],
+        };
+      }
+      case 'BRING_TO_FRONT': {
+        const toMove = present.shapes.filter(s => action.payload.includes(s.id));
+        const others = present.shapes.filter(s => !action.payload.includes(s.id));
+        return { ...present, shapes: [...others, ...toMove] };
+      }
+      case 'SEND_TO_BACK': {
+        const toMove = present.shapes.filter(s => action.payload.includes(s.id));
+        const others = present.shapes.filter(s => !action.payload.includes(s.id));
+        return { ...present, shapes: [...toMove, ...others] };
+      }
+      case 'DUPLICATE_SHAPES': {
+        const shapesToDuplicate = present.shapes.filter(s => action.payload.includes(s.id));
+        if (shapesToDuplicate.length === 0) return present;
+        const newShapes = shapesToDuplicate.map(shape => ({
+          ...shape,
+          id: nanoid(),
+          name: `${shape.name || shape.type} copy`,
+          x: shape.x + 10,
+          y: shape.y + 10,
+        }));
+        return {
+          shapes: [...present.shapes, ...newShapes],
+          selectedShapeIds: newShapes.map(s => s.id),
+        };
+      }
+      case 'REORDER_SHAPES': {
+        const { fromId, toId, position } = action.payload;
+        const reversedShapes = [...present.shapes].reverse();
+        const fromIndex = reversedShapes.findIndex(s => s.id === fromId);
+        let toIndex = reversedShapes.findIndex(s => s.id === toId);
+        if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return present;
+        const [movedItem] = reversedShapes.splice(fromIndex, 1);
+        if (fromIndex < toIndex) { toIndex--; }
+        if (position === 'top') {
+          reversedShapes.splice(toIndex, 0, movedItem);
+        } else {
+          reversedShapes.splice(toIndex + 1, 0, movedItem);
+        }
+        return { ...present, shapes: reversedShapes.reverse() };
+      }
+      case 'RENAME_SHAPE':
+        return {
+          ...present,
+          shapes: present.shapes.map(s =>
             s.id === action.payload.id
               ? { ...s, name: action.payload.name }
               : s
           ),
         };
-    default:
-      return state;
+      default:
+        return present;
+    }
+  })();
+
+  if (newPresent === present) {
+    return state;
   }
+  
+  const newPast = [...past, present].slice(-HISTORY_LIMIT);
+  
+  return {
+    past: newPast,
+    present: newPresent,
+    future: [],
+  };
 }
-
-const initialState: EditorState = {
-  shapes: [],
-  selectedShapeIds: [],
-};
-
 
 export function useEditorState() {
   const [state, dispatch] = useReducer(editorReducer, initialState);
   const { toast } = useToast();
+
+  const canUndo = state.past.length > 0;
+  const canRedo = state.future.length > 0;
+
+  const undo = useCallback(() => { if (canUndo) { dispatch({ type: 'UNDO' }) } }, [canUndo]);
+  const redo = useCallback(() => { if (canRedo) { dispatch({ type: 'REDO' }) } }, [canRedo]);
 
   const addShape = useCallback((shape: Shape) => dispatch({ type: 'ADD_SHAPE', payload: shape }), []);
   const updateShapes = useCallback((updatedShapes: Shape[]) => dispatch({ type: 'UPDATE_SHAPES', payload: updatedShapes }), []);
@@ -170,7 +217,7 @@ export function useEditorState() {
   }, []);
 
   const applyBooleanOperation = (operation: 'union' | 'subtract' | 'intersect' | 'exclude') => {
-    if (state.selectedShapeIds.length < 2) {
+    if (state.present.selectedShapeIds.length < 2) {
       toast({
         title: "Selection Error",
         description: "Please select at least two shapes to perform a boolean operation.",
@@ -178,7 +225,7 @@ export function useEditorState() {
       });
       return;
     }
-    const selectedShapes = state.shapes.filter(s => state.selectedShapeIds.includes(s.id));
+    const selectedShapes = state.present.shapes.filter(s => state.present.selectedShapeIds.includes(s.id));
     dispatch({ type: 'APPLY_BOOLEAN', payload: { operation, shapes: selectedShapes } });
     toast({
       title: `${operation.charAt(0).toUpperCase() + operation.slice(1)} Applied`,
@@ -187,8 +234,8 @@ export function useEditorState() {
   };
   
   return {
-    shapes: state.shapes,
-    selectedShapeIds: state.selectedShapeIds,
+    shapes: state.present.shapes,
+    selectedShapeIds: state.present.selectedShapeIds,
     addShape,
     updateShapes,
     setSelectedShapeIds,
@@ -198,6 +245,10 @@ export function useEditorState() {
     applyBooleanOperation,
     duplicateShapes,
     reorderShapes,
-    renameShape
+    renameShape,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
   };
 }

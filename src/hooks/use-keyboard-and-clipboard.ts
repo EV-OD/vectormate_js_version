@@ -12,6 +12,8 @@ type useKeyboardAndClipboardProps = {
     deleteSelectedShapes: () => void;
     setActiveTool: (tool: Tool) => void;
     setInteractionState: (state: InteractionState) => void;
+    undo: () => void;
+    redo: () => void;
 }
 
 export function useKeyboardAndClipboard({
@@ -21,7 +23,9 @@ export function useKeyboardAndClipboard({
   setSelectedShapeIds,
   deleteSelectedShapes,
   setActiveTool,
-  setInteractionState
+  setInteractionState,
+  undo,
+  redo,
 }: useKeyboardAndClipboardProps) {
     const [clipboard, setClipboard] = useState<Shape[]>([]);
     const { toast } = useToast();
@@ -45,7 +49,7 @@ export function useKeyboardAndClipboard({
             setSelectedShapeIds(newShapes.map(s => s.id));
             setClipboard(newShapes);
         }
-    }, [clipboard, addShape, setSelectedShapeIds, canvasViewScale, toast]);
+    }, [clipboard, addShape, setSelectedShapeIds, canvasViewScale]);
 
     useEffect(() => {
       const handleKeyDown = (e: KeyboardEvent) => {
@@ -54,6 +58,12 @@ export function useKeyboardAndClipboard({
         }
         
         if (e.metaKey || e.ctrlKey) {
+          if (e.shiftKey && e.key.toLowerCase() === 'z') {
+            e.preventDefault();
+            redo();
+            return;
+          }
+          
           switch(e.key.toLowerCase()) {
             case 'c':
               e.preventDefault();
@@ -62,6 +72,14 @@ export function useKeyboardAndClipboard({
             case 'v':
               e.preventDefault();
               handlePaste();
+              return;
+            case 'z':
+              e.preventDefault();
+              undo();
+              return;
+            case 'y':
+              e.preventDefault();
+              redo();
               return;
           }
         }
@@ -84,7 +102,7 @@ export function useKeyboardAndClipboard({
       };
       window.addEventListener('keydown', handleKeyDown);
       return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [deleteSelectedShapes, handleCopy, handlePaste, setSelectedShapeIds, setActiveTool, setInteractionState]);
+    }, [deleteSelectedShapes, handleCopy, handlePaste, setSelectedShapeIds, setActiveTool, setInteractionState, undo, redo]);
     
     return {
         clipboard,
