@@ -7,10 +7,11 @@ import { nanoid } from 'nanoid';
 import { type Clipper2ZFactoryFunction, type MainModule } from 'clipper2-wasm';
 import * as _Clipper2ZFactory from 'clipper2-wasm/dist/umd/clipper2z';
 
-// This is a workaround for module compatibility. The _Clipper2ZFactory has the actual function.
 const Clipper2ZFactory: Clipper2ZFactoryFunction = _Clipper2ZFactory;
 
 let wasmModule: MainModule | null = null;
+type WasmPointD = InstanceType<MainModule['PointD']>;
+
 
 // A single promise to ensure we only initialize the module once.
 const wasmReady = new Promise<void>((resolve, reject) => {
@@ -27,8 +28,6 @@ const wasmReady = new Promise<void>((resolve, reject) => {
   }).catch(reject);
 });
 
-// A helper type for PointD from the wasm module.
-type WasmPointD = InstanceType<MainModule['PointD']>;
 
 function shapeToPoints(shape: Shape): WasmPointD[] {
     if (!wasmModule) throw new Error("WASM module not initialized");
@@ -144,15 +143,18 @@ async function performWasmOperation(shape1: Shape, shape2: Shape, opType: any): 
         return null;
     }
 
-    // Use the wasm module to create paths from our points
-    const path1 = wasmModule.makePathD(points1);
-    const path2 = wasmModule.makePathD(points2);
+    // Manually create PathD objects and add points
+    const singlePath1 = new wasmModule.PathD();
+    points1.forEach(p => singlePath1.push_back(p));
+    
+    const singlePath2 = new wasmModule.PathD();
+    points2.forEach(p => singlePath2.push_back(p));
     
     // The booleanOp function expects containers for paths (PathsD)
     const paths1 = new wasmModule.PathsD();
-    paths1.push_back(path1);
+    paths1.push_back(singlePath1);
     const paths2 = new wasmModule.PathsD();
-    paths2.push_back(path2);
+    paths2.push_back(singlePath2);
     
     // The FillRule is an enum on the wasm module
     const fillRule = wasmModule.FillRule.EvenOdd;
