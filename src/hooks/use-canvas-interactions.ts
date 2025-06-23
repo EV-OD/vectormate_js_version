@@ -162,10 +162,10 @@ export function useCanvasInteractions({
             setDraftShapes(movingShapes);
             setInteractionState({ type: 'moving', startX: x, startY: y, initialShapes: movingShapes });
         } else { // Background click
-            if (!e.shiftKey) {
-                setSelectedShapeIds([]);
+            if (e.ctrlKey) {
+                setInteractionState({ type: 'marquee', startX: x, startY: y });
             }
-            setInteractionState({ type: 'marquee', startX: x, startY: y });
+            // Otherwise, do nothing, as requested.
         }
     } else if (activeTool === 'brush') {
         const newShape: PathShape = {
@@ -507,7 +507,7 @@ export function useCanvasInteractions({
         }
     }
     setActiveSnapLines(newActiveSnapLines);
-  }, [interactionState, getScreenPosition, onViewChange, getMousePosition, canvasView, shapes, getSnappedCoords, setMarquee, setActiveSnapLines, setInteractionState, draftShapes]);
+  }, [interactionState, getScreenPosition, onViewChange, getMousePosition, canvasView, shapes, draftShapes, getSnappedCoords, setMarquee, setActiveSnapLines, setInteractionState]);
 
   const handleMouseUp = useCallback((e: React.MouseEvent) => {
     if (interactionState.type === 'marquee' && marquee) {
