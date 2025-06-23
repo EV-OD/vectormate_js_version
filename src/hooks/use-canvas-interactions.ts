@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useRef, useState, useCallback } from 'react';
@@ -223,6 +222,24 @@ export function useCanvasInteractions({
             fill: '#ffffff',
         };
         addShape(newShape, true);
+        setActiveTool('select');
+    } else if (activeTool === 'image') {
+        const newShape: ImageShape = {
+            id: nanoid(),
+            type: 'image',
+            name: 'Image',
+            x: pos.x - 100,
+            y: pos.y - 100,
+            width: 200,
+            height: 200,
+            rotation: 0,
+            opacity: 1,
+        };
+        addShape(newShape, true);
+        setActiveTool('select');
+    } else if (activeTool === 'svg') {
+        // TODO: Implement SVG placeholder creation
+        console.log("SVG tool not implemented yet");
         setActiveTool('select');
     } else {
         const shapeName = activeTool.charAt(0).toUpperCase() + activeTool.slice(1);

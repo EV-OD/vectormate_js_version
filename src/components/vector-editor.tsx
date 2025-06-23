@@ -10,7 +10,6 @@ import { exportToSvg, exportToJpeg, exportSelectionToSvg, exportSelectionToJpeg 
 import { ContextMenu } from './context-menu';
 import { useEditorState } from '@/hooks/use-editor-state';
 import { useKeyboardAndClipboard } from '@/hooks/use-keyboard-and-clipboard';
-import { nanoid } from 'nanoid';
 
 export function VectorEditor() {
   const {
@@ -46,10 +45,6 @@ export function VectorEditor() {
     scale: 1,
     pan: { x: 0, y: 0 },
   });
-
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [uploadType, setUploadType] = useState<'image' | 'svg' | null>(null);
-
 
   const handleViewChange = useCallback((viewUpdate: Partial<CanvasView>) => {
     setCanvasView(prev => ({ ...prev, ...viewUpdate }));
@@ -118,99 +113,15 @@ export function VectorEditor() {
     }
   }, [updateShapes, commit]);
 
-  const getCanvasCenter = () => {
-    const canvasEl = document.getElementById('vector-canvas');
-    if (!canvasEl) return { x: 0, y: 0 };
-    const rect = canvasEl.getBoundingClientRect();
-    const centerX = (rect.width / 2 - canvasView.pan.x) / canvasView.scale;
-    const centerY = (rect.height / 2 - canvasView.pan.y) / canvasView.scale;
-    return { x: centerX, y: centerY };
-  }
-
-  const handleImageUpload = () => {
-    setUploadType('image');
-    if (fileInputRef.current) {
-        fileInputRef.current.accept = 'image/*';
-        fileInputRef.current.click();
-    }
-  };
-
-  const handleSvgUpload = () => {
-      setUploadType('svg');
-      if (fileInputRef.current) {
-          fileInputRef.current.accept = '.svg, image/svg+xml';
-          fileInputRef.current.click();
-      }
-  };
-
-  const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const center = getCanvasCenter();
-    const reader = new FileReader();
-
-    if (uploadType === 'image') {
-        reader.onload = (event) => {
-            const dataUrl = event.target?.result as string;
-            const img = new window.Image();
-            img.onload = () => {
-                const newShape: ImageShape = {
-                    id: nanoid(),
-                    type: 'image',
-                    name: file.name,
-                    href: dataUrl,
-                    x: center.x - img.naturalWidth / 2,
-                    y: center.y - img.naturalHeight / 2,
-                    width: img.naturalWidth,
-                    height: img.naturalHeight,
-                    rotation: 0,
-                    opacity: 1,
-                };
-                addShape(newShape);
-            };
-            img.src = dataUrl;
-        };
-        reader.readAsDataURL(file);
-    } else if (uploadType === 'svg') {
-        reader.onload = (event) => {
-            const svgString = event.target?.result as string;
-            const width = 200, height = 200;
-            const dataUrl = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svgString)))}`;
-            const newShape: SVGShape = {
-                id: nanoid(),
-                type: 'svg',
-                name: file.name,
-                svgString,
-                dataUrl,
-                x: center.x - width / 2,
-                y: center.y - height / 2,
-                width,
-                height,
-                rotation: 0,
-                opacity: 1,
-            };
-            addShape(newShape);
-        };
-        reader.readAsText(file);
-    }
-    
-    if (e.target) e.target.value = '';
-  };
-
-
   return (
     <div className="flex flex-col h-screen bg-muted/40 font-sans">
-      <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileSelected} />
       <AppHeader onExport={handleExport} canvasView={canvasView} onViewChange={handleViewChange} />
       <div className="flex flex-1 overflow-hidden">
         <Toolbar 
           activeTool={activeTool} 
           onToolSelect={setActiveTool} 
           onBooleanOperation={applyBooleanOperation} 
-          disabled={selectedShapes.length < 2} 
-          onAddImage={handleImageUpload}
-          onAddSvg={handleSvgUpload}
+          disabled={selectedShapes.length < 2}
         />
         <main className="flex-1 relative bg-background shadow-inner">
           <Canvas

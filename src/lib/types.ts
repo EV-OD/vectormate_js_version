@@ -39,7 +39,8 @@ export interface LineShape extends BaseShape {
 
 export interface ImageShape extends BaseShape {
   type: 'image';
-  href: string;
+  href?: string;
+  lowQualityHref?: string;
 }
 
 export interface SVGShape extends BaseShape {
@@ -63,7 +64,7 @@ export interface TextShape extends BaseShape {
 
 export type Shape = RectangleShape | CircleShape | PolygonShape | LineShape | ImageShape | SVGShape | PathShape | TextShape;
 
-export type Tool = 'select' | 'rectangle' | 'circle' | 'polygon' | 'line' | 'brush' | 'pan' | 'text';
+export type Tool = 'select' | 'rectangle' | 'circle' | 'polygon' | 'line' | 'brush' | 'pan' | 'text' | 'image' | 'svg';
 
 export type Handle = 'n' | 's' | 'e' | 'w' | 'nw' | 'ne' | 'sw' | 'se' | 'rotate';
 

@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useRef } from 'react';
 import { type Shape, RectangleShape, ImageShape, SVGShape, PolygonShape, PathShape, TextShape, InteractionState } from '@/lib/types';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Slider } from './ui/slider';
-import { Download, Trash2 } from 'lucide-react';
+import { Download, Trash2, Upload } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
 import { Separator } from './ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -63,6 +63,8 @@ export function RightSidebar({
   const showFill = selectedShapes.every(s => !['line', 'image', 'svg'].includes(s.type));
   const showStroke = selectedShapes.every(s => !['image', 'svg'].includes(s.type));
   const showOpacity = selectedShapes.every(s => s.type !== 'line');
+  
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleInteractionStart = useCallback(() => {
     setInteractionState({ type: 'editing' });
@@ -73,7 +75,7 @@ export function RightSidebar({
     onCommit();
   }, [setInteractionState, onCommit]);
 
-  const handlePropertyChange = (prop: keyof Shape | 'href' | 'svgString' | 'd' | 'text' | 'fontSize' | 'fontFamily' | 'fontWeight', value: any, commit: boolean = false) => {
+  const handlePropertyChange = (prop: keyof Shape | 'svgString' | 'd' | 'text' | 'fontSize' | 'fontFamily' | 'fontWeight' | 'href' | 'lowQualityHref', value: any, commit: boolean = false) => {
     const updated = selectedShapes.map(s => {
       const newShape = { ...s };
 
@@ -144,8 +146,50 @@ export function RightSidebar({
       return defaultValue;
   }
 
+  const handleImageFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0 || !isSingleImage) return;
+    const file = e.target.files[0];
+    
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        const dataUrl = event.target?.result as string;
+        const img = new window.Image();
+        img.onload = () => {
+            const PREVIEW_WIDTH = 50;
+            const canvas = document.createElement('canvas');
+            const aspectRatio = img.height / img.width;
+            canvas.width = PREVIEW_WIDTH;
+            canvas.height = PREVIEW_WIDTH * aspectRatio;
+            const ctx = canvas.getContext('2d');
+            ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+            const lowQualityHref = canvas.toDataURL('image/jpeg', 0.2);
+
+            const updatedShape: ImageShape = {
+                ...(shape as ImageShape),
+                href: dataUrl,
+                lowQualityHref,
+                width: img.naturalWidth,
+                height: img.naturalHeight,
+                name: file.name
+            };
+            onShapesUpdate([updatedShape], true);
+        };
+        img.src = dataUrl;
+    };
+    reader.readAsDataURL(file);
+
+    if (e.target) e.target.value = '';
+  }
+
   return (
     <aside className="w-64 border-l bg-card text-card-foreground flex flex-col">
+       <input
+        type="file"
+        ref={fileInputRef}
+        className="hidden"
+        accept="image/*"
+        onChange={handleImageFileSelected}
+      />
       <Tabs defaultValue="properties" className="flex-1 flex flex-col min-h-0">
         <TabsList className="grid w-full grid-cols-2 rounded-none border-b shrink-0">
           <TabsTrigger value="properties" className="rounded-none">Properties</TabsTrigger>
@@ -221,10 +265,10 @@ export function RightSidebar({
                         <AccordionContent>
                             <div className="space-y-4">
                                 {isSingleImage && (
-                                    <div>
-                                        <Label htmlFor="image-href">Image URL</Label>
-                                        <Input id="image-href" value={(shape as ImageShape).href || ''} onChange={e => handlePropertyChange('href', e.target.value)} onFocus={handleInteractionStart} onBlur={handleInteractionEnd} />
-                                    </div>
+                                    <Button className="w-full" onClick={() => fileInputRef.current?.click()}>
+                                      <Upload className="mr-2" />
+                                      {(shape as ImageShape).href ? 'Replace Image' : 'Upload Image'}
+                                    </Button>
                                 )}
                                 {isSingleSvg && (
                                     <div>

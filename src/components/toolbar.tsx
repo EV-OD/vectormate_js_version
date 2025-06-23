@@ -16,7 +16,7 @@ import {
   Diff, 
   Layers, 
   Eclipse, 
-  Image,
+  Image as ImageIcon,
   FileCode,
   Brush,
   Hand,
@@ -35,8 +35,6 @@ type ToolbarProps = {
   onToolSelect: (tool: Tool) => void;
   onBooleanOperation: (operation: 'union' | 'subtract' | 'intersect' | 'exclude') => void;
   disabled: boolean;
-  onAddImage: () => void;
-  onAddSvg: () => void;
 };
 
 const selectTool = { name: 'select' as const, icon: MousePointer, tooltip: 'Select (V)' };
@@ -60,8 +58,6 @@ export function Toolbar({
   onToolSelect, 
   onBooleanOperation, 
   disabled,
-  onAddImage,
-  onAddSvg,
 }: ToolbarProps) {
   const ActiveShapeIcon = shapeTools.find(t => t.name === activeTool)?.icon || PenTool;
   const isShapeToolActive = shapeTools.some(t => t.name === activeTool);
@@ -203,29 +199,31 @@ export function Toolbar({
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
-                variant='ghost'
+                variant={activeTool === 'image' ? 'secondary' : 'ghost'}
                 size="icon"
-                onClick={onAddImage}
+                onClick={() => onToolSelect('image')}
+                className={cn(activeTool === 'image' && 'text-primary ring-2 ring-primary/50')}
               >
-                <Image className="w-5 h-5" />
+                <ImageIcon className="w-5 h-5" />
               </Button>
             </TooltipTrigger>
             <TooltipContent side="right">
-              <p>Add Image</p>
+              <p>Image</p>
             </TooltipContent>
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
-                variant='ghost'
+                variant={activeTool === 'svg' ? 'secondary' : 'ghost'}
                 size="icon"
-                onClick={onAddSvg}
+                onClick={() => onToolSelect('svg')}
+                className={cn(activeTool === 'svg' && 'text-primary ring-2 ring-primary/50')}
               >
                 <FileCode className="w-5 h-5" />
               </Button>
             </TooltipTrigger>
             <TooltipContent side="right">
-              <p>Add SVG</p>
+              <p>SVG</p>
             </TooltipContent>
           </Tooltip>
         </div>

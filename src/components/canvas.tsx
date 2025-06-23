@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { getBounds, getHexagonPoints } from '@/lib/geometry';
 import { useCanvasInteractions } from '@/hooks/use-canvas-interactions';
 import { SelectionBox } from './canvas/selection-box';
+import { ImageIcon } from 'lucide-react';
 
 type CanvasProps = {
   shapes: Shape[];
@@ -171,11 +172,35 @@ export function Canvas(props: CanvasProps) {
                   );
               }
               case 'image': {
-                const { href } = rest as ImageShape;
-                if (isSelectedForInteraction) {
-                    return <rect key={rest.id} x={rest.x} y={rest.y} width={rest.width} height={rest.height} fill="hsl(var(--primary) / 0.3)" stroke="hsl(var(--primary))" strokeDasharray="4" strokeWidth={1 / canvasView.scale} {...commonProps} />;
+                const imageShape = rest as ImageShape;
+                if (!imageShape.href) {
+                  return (
+                    <g {...commonProps}>
+                      <rect
+                        x={imageShape.x}
+                        y={imageShape.y}
+                        width={imageShape.width}
+                        height={imageShape.height}
+                        fill="hsl(var(--muted))"
+                        stroke="hsl(var(--border))"
+                        strokeDasharray="4"
+                      />
+                       <foreignObject 
+                          x={imageShape.x} y={imageShape.y} 
+                          width={imageShape.width} height={imageShape.height}
+                        >
+                          <div className="flex items-center justify-center h-full w-full">
+                              <ImageIcon className="text-muted-foreground" size={Math.min(imageShape.width, imageShape.height) * 0.5}/>
+                          </div>
+                      </foreignObject>
+                    </g>
+                  );
                 }
-                return <image key={rest.id} href={href} x={rest.x} y={rest.y} width={rest.width} height={rest.height} {...commonProps} />;
+
+                const href = (isInteracting && imageShape.lowQualityHref) ? imageShape.lowQualityHref : imageShape.href;
+                const imageRendering = (isInteracting && imageShape.lowQualityHref) ? "pixelated" : "auto";
+
+                return <image key={rest.id} href={href} x={rest.x} y={rest.y} width={rest.width} height={rest.height} {...commonProps} style={{ imageRendering }}/>;
               }
               case 'svg': {
                 const { svgString, dataUrl } = rest as SVGShape;

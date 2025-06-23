@@ -109,6 +109,7 @@ export function useKeyboardAndClipboard({
             case 'l': setActiveTool('line'); break;
             case 'b': setActiveTool('brush'); break;
             case 't': setActiveTool('text'); break;
+            case 'i': setActiveTool('image'); break;
           }
         }
       };
