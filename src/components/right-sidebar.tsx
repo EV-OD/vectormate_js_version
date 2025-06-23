@@ -88,122 +88,124 @@ export function RightSidebar({
 
   return (
     <aside className="w-64 border-l bg-card text-card-foreground flex flex-col">
-      <Tabs defaultValue="properties" className="flex-1 flex flex-col">
-        <TabsList className="grid w-full grid-cols-2 rounded-none border-b">
+      <Tabs defaultValue="properties" className="flex-1 flex flex-col min-h-0">
+        <TabsList className="grid w-full grid-cols-2 rounded-none border-b shrink-0">
           <TabsTrigger value="properties" className="rounded-none">Properties</TabsTrigger>
           <TabsTrigger value="layers" className="rounded-none">Layers</TabsTrigger>
         </TabsList>
-        <TabsContent value="properties" className="flex-1 overflow-auto">
-           {selectedShapes.length === 0 ? (
-            <div className="p-4 flex items-center justify-center h-full">
-              <p className="text-sm text-muted-foreground">Select an object to see its properties.</p>
-            </div>
-           ) : (
-            <div className="p-4 space-y-6">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold font-headline">
-                  {multipleSelected ? `${selectedShapes.length} items` : shape.type.charAt(0).toUpperCase() + shape.type.slice(1)}
-                </h2>
-                <Button variant="ghost" size="icon" onClick={onDelete}>
-                  <Trash2 className="w-4 h-4" />
-                </Button>
+        <TabsContent value="properties" className="flex-1 overflow-y-auto">
+           <div className="p-4 space-y-6">
+            {selectedShapes.length === 0 ? (
+              <div className="flex items-center justify-center h-full">
+                <p className="text-sm text-muted-foreground text-center">Select an object to see its properties.</p>
               </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold font-headline">
+                    {multipleSelected ? `${selectedShapes.length} items` : shape.type.charAt(0).toUpperCase() + shape.type.slice(1)}
+                  </h2>
+                  <Button variant="ghost" size="icon" onClick={onDelete}>
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
 
-              <Accordion type="multiple" defaultValue={['transform', 'appearance']} className="w-full">
-                <AccordionItem value="transform">
-                  <AccordionTrigger>Transform</AccordionTrigger>
-                  <AccordionContent>
-                    <div className="grid grid-cols-2 gap-x-2 gap-y-4">
-                      <div>
-                        <Label htmlFor="pos-x">X</Label>
-                        <Input id="pos-x" type="number" value={getCommonValue('x')} onChange={e => handlePropertyChange('x', e.target.value)} disabled={multipleSelected} />
-                      </div>
-                      <div>
-                        <Label htmlFor="pos-y">Y</Label>
-                        <Input id="pos-y" type="number" value={getCommonValue('y')} onChange={e => handlePropertyChange('y', e.target.value)} disabled={multipleSelected} />
-                      </div>
-                      <div>
-                        <Label htmlFor="width">W</Label>
-                        <Input id="width" type="number" value={getCommonValue('width')} onChange={e => handlePropertyChange('width', Math.max(0, Number(e.target.value)))} disabled={multipleSelected}/>
-                      </div>
-                      <div>
-                        <Label htmlFor="height">H</Label>
-                        <Input id="height" type="number" value={getCommonValue('height')} onChange={e => handlePropertyChange('height', Math.max(0, Number(e.target.value)))} disabled={multipleSelected}/>
-                      </div>
-                      <div className="col-span-2">
-                        <Label htmlFor="rotation">Rotate</Label>
-                        <Input id="rotation" type="number" value={getCommonValue('rotation')} onChange={e => handlePropertyChange('rotation', e.target.value)} disabled={multipleSelected}/>
-                      </div>
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-                
-                <AccordionItem value="appearance">
-                  <AccordionTrigger>Appearance</AccordionTrigger>
-                  <AccordionContent>
-                    <div className="space-y-4">
-                      {showFillAndOpacity && (
-                        <>
-                          <div>
-                            <Label>Fill</Label>
-                            <div className="flex items-center gap-2">
-                              <Input type="color" value={String(getCommonValue('fill') ?? '#cccccc')} onChange={e => handlePropertyChange('fill', e.target.value)} className="p-1 h-8 w-8" />
-                              <Input type="text" value={String(getCommonValue('fill') ?? '')} onChange={e => handlePropertyChange('fill', e.target.value)} placeholder={getCommonValue('fill') === 'Mixed' ? 'Mixed' : '#cccccc'} />
-                            </div>
-                          </div>
-                          <div>
-                            <Label>Opacity</Label>
-                            <div className="flex items-center gap-2">
-                              <Slider
-                                value={[getSliderValue('opacity', 100, 100)]}
-                                onValueChange={([val]) => handlePropertyChange('opacity', val / 100)}
-                                max={100}
-                                step={1}
-                              />
-                              <span className="text-sm text-muted-foreground w-12 text-right">{getCommonValue('opacity') === 'Mixed' ? 'Mixed' : `${Math.round(getSliderValue('opacity', 100, 100))}%`}</span>
-                            </div>
-                          </div>
-                          <Separator/>
-                        </>
-                      )}
-
-                      {isSingleRectangle && (
-                        <>
-                           <div>
-                            <Label>Border Radius</Label>
-                            <div className="flex items-center gap-2">
-                              <Slider
-                                value={[(shape as RectangleShape).borderRadius || 0]}
-                                onValueChange={([val]) => handlePropertyChange('borderRadius', val)}
-                                max={Math.min(shape.width, shape.height) / 2}
-                                step={1}
-                              />
-                              <span className="text-sm text-muted-foreground w-12 text-right">{Math.round((shape as RectangleShape).borderRadius || 0)}px</span>
-                            </div>
-                          </div>
-                          <Separator />
-                        </>
-                      )}
-                      
-                      <div>
-                        <Label>Stroke</Label>
-                        <div className="flex items-center gap-2">
-                          <Input type="color" value={String(getCommonValue('stroke') ?? '#000000')} onChange={e => handlePropertyChange('stroke', e.target.value)} className="p-1 h-8 w-8" />
-                          <Input type="text" value={String(getCommonValue('stroke') ?? '')} onChange={e => handlePropertyChange('stroke', e.target.value)} placeholder={getCommonValue('stroke') === 'Mixed' ? 'Mixed' : '#000000'} />
+                <Accordion type="multiple" defaultValue={['transform', 'appearance']} className="w-full">
+                  <AccordionItem value="transform">
+                    <AccordionTrigger>Transform</AccordionTrigger>
+                    <AccordionContent>
+                      <div className="grid grid-cols-2 gap-x-2 gap-y-4">
+                        <div>
+                          <Label htmlFor="pos-x">X</Label>
+                          <Input id="pos-x" type="number" value={getCommonValue('x')} onChange={e => handlePropertyChange('x', e.target.value)} disabled={multipleSelected} />
+                        </div>
+                        <div>
+                          <Label htmlFor="pos-y">Y</Label>
+                          <Input id="pos-y" type="number" value={getCommonValue('y')} onChange={e => handlePropertyChange('y', e.target.value)} disabled={multipleSelected} />
+                        </div>
+                        <div>
+                          <Label htmlFor="width">W</Label>
+                          <Input id="width" type="number" value={getCommonValue('width')} onChange={e => handlePropertyChange('width', Math.max(0, Number(e.target.value)))} disabled={multipleSelected}/>
+                        </div>
+                        <div>
+                          <Label htmlFor="height">H</Label>
+                          <Input id="height" type="number" value={getCommonValue('height')} onChange={e => handlePropertyChange('height', Math.max(0, Number(e.target.value)))} disabled={multipleSelected}/>
+                        </div>
+                        <div className="col-span-2">
+                          <Label htmlFor="rotation">Rotate</Label>
+                          <Input id="rotation" type="number" value={getCommonValue('rotation')} onChange={e => handlePropertyChange('rotation', e.target.value)} disabled={multipleSelected}/>
                         </div>
                       </div>
-                      <div>
-                        <Label htmlFor="stroke-width">Stroke Width</Label>
-                        <Input id="stroke-width" type="number" value={String(getCommonValue('strokeWidth') ?? '0')} min={0} onChange={e => handlePropertyChange('strokeWidth', e.target.value)} />
+                    </AccordionContent>
+                  </AccordionItem>
+                  
+                  <AccordionItem value="appearance">
+                    <AccordionTrigger>Appearance</AccordionTrigger>
+                    <AccordionContent>
+                      <div className="space-y-4">
+                        {showFillAndOpacity && (
+                          <>
+                            <div>
+                              <Label>Fill</Label>
+                              <div className="flex items-center gap-2">
+                                <Input type="color" value={String(getCommonValue('fill') ?? '#cccccc')} onChange={e => handlePropertyChange('fill', e.target.value)} className="p-1 h-8 w-8" />
+                                <Input type="text" value={String(getCommonValue('fill') ?? '')} onChange={e => handlePropertyChange('fill', e.target.value)} placeholder={getCommonValue('fill') === 'Mixed' ? 'Mixed' : '#cccccc'} />
+                              </div>
+                            </div>
+                            <div>
+                              <Label>Opacity</Label>
+                              <div className="flex items-center gap-2">
+                                <Slider
+                                  value={[getSliderValue('opacity', 100, 100)]}
+                                  onValueChange={([val]) => handlePropertyChange('opacity', val / 100)}
+                                  max={100}
+                                  step={1}
+                                />
+                                <span className="text-sm text-muted-foreground w-12 text-right">{getCommonValue('opacity') === 'Mixed' ? 'Mixed' : `${Math.round(getSliderValue('opacity', 100, 100))}%`}</span>
+                              </div>
+                            </div>
+                            <Separator/>
+                          </>
+                        )}
+
+                        {isSingleRectangle && (
+                          <>
+                            <div>
+                              <Label>Border Radius</Label>
+                              <div className="flex items-center gap-2">
+                                <Slider
+                                  value={[(shape as RectangleShape).borderRadius || 0]}
+                                  onValueChange={([val]) => handlePropertyChange('borderRadius', val)}
+                                  max={Math.min(shape.width, shape.height) / 2}
+                                  step={1}
+                                />
+                                <span className="text-sm text-muted-foreground w-12 text-right">{Math.round((shape as RectangleShape).borderRadius || 0)}px</span>
+                              </div>
+                            </div>
+                            <Separator />
+                          </>
+                        )}
+                        
+                        <div>
+                          <Label>Stroke</Label>
+                          <div className="flex items-center gap-2">
+                            <Input type="color" value={String(getCommonValue('stroke') ?? '#000000')} onChange={e => handlePropertyChange('stroke', e.target.value)} className="p-1 h-8 w-8" />
+                            <Input type="text" value={String(getCommonValue('stroke') ?? '')} onChange={e => handlePropertyChange('stroke', e.target.value)} placeholder={getCommonValue('stroke') === 'Mixed' ? 'Mixed' : '#000000'} />
+                          </div>
+                        </div>
+                        <div>
+                          <Label htmlFor="stroke-width">Stroke Width</Label>
+                          <Input id="stroke-width" type="number" value={String(getCommonValue('strokeWidth') ?? '0')} min={0} onChange={e => handlePropertyChange('strokeWidth', e.target.value)} />
+                        </div>
                       </div>
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
-            </div>
-           )}
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
+              </>
+            )}
+           </div>
         </TabsContent>
-        <TabsContent value="layers" className="flex-1">
+        <TabsContent value="layers" className="flex-1 min-h-0">
           <LayersPanel 
             shapes={shapes}
             selectedShapeIds={selectedShapeIds}
