@@ -184,10 +184,12 @@ export function Canvas(props: CanvasProps) {
                         fill="hsl(var(--muted))"
                         stroke="hsl(var(--border))"
                         strokeDasharray="4"
+                        data-shape-id={rest.id}
                       />
                        <foreignObject 
                           x={imageShape.x} y={imageShape.y} 
                           width={imageShape.width} height={imageShape.height}
+                          style={{ pointerEvents: 'none' }}
                         >
                           <div className="flex items-center justify-center h-full w-full">
                               <ImageIcon className="text-muted-foreground" size={Math.min(imageShape.width, imageShape.height) * 0.5}/>
