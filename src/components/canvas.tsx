@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { type Shape, type Tool, type InteractionState, type Handle, PolygonShape, ShapeType, CanvasView } from '@/lib/types';
+import { type Shape, type Tool, type InteractionState, type Handle, PolygonShape, ShapeType, CanvasView, RectangleShape } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { getBounds, getHexagonPoints } from '@/lib/geometry';
 import { useCanvasInteractions } from '@/hooks/use-canvas-interactions';
@@ -118,7 +118,8 @@ export function Canvas(props: CanvasProps) {
 
             switch (rest.type) {
               case 'rectangle':
-                return <rect key={rest.id} x={rest.x} y={rest.y} width={rest.width} height={rest.height} {...commonProps} />;
+                const rect = rest as RectangleShape;
+                return <rect key={rect.id} x={rect.x} y={rect.y} width={rect.width} height={rect.height} rx={rect.borderRadius} {...commonProps} />;
               case 'circle':
                 return <ellipse key={rest.id} cx={rest.x + rest.width / 2} cy={rest.y + rest.height / 2} rx={rest.width / 2} ry={rest.height / 2} {...commonProps} />;
               case 'polygon': {

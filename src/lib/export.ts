@@ -1,11 +1,12 @@
-import { type Shape, type CanvasView } from '@/lib/types';
+import { type Shape, type CanvasView, RectangleShape } from '@/lib/types';
 
 function shapeToSvgElement(shape: Shape): string {
   const common_attrs = `transform="rotate(${shape.rotation} ${shape.x + shape.width / 2} ${shape.y + shape.height / 2})" fill="${shape.type === 'line' ? 'none' : (shape.fill || 'transparent')}" fill-opacity="${shape.opacity || 1}" stroke="${shape.stroke || 'none'}" stroke-width="${shape.strokeWidth || 0}"`;
   
   switch (shape.type) {
     case 'rectangle':
-      return `<rect x="${shape.x}" y="${shape.y}" width="${shape.width}" height="${shape.height}" ${common_attrs} />`;
+      const rect = shape as RectangleShape;
+      return `<rect x="${rect.x}" y="${rect.y}" width="${rect.width}" height="${rect.height}" rx="${rect.borderRadius || 0}" ${common_attrs} />`;
     case 'circle':
       return `<ellipse cx="${shape.x + shape.width / 2}" cy="${shape.y + shape.height / 2}" rx="${shape.width / 2}" ry="${shape.height / 2}" ${common_attrs} />`;
     case 'polygon':

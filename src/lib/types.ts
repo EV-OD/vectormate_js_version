@@ -1,3 +1,5 @@
+'use client';
+
 export type ShapeType = 'rectangle' | 'circle' | 'polygon' | 'line';
 
 export type BaseShape = {
@@ -12,6 +14,7 @@ export type BaseShape = {
   opacity?: number;
   stroke?: string;
   strokeWidth?: number;
+  borderRadius?: number;
 };
 
 export interface RectangleShape extends BaseShape {
