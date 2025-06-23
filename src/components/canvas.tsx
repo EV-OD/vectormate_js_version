@@ -170,11 +170,17 @@ export function Canvas(props: CanvasProps) {
               }
               case 'image': {
                 const { href } = rest as ImageShape;
+                if (interactionState.type === 'moving' && selectedShapeIds.includes(rest.id)) {
+                    commonProps.style = { imageRendering: 'pixelated' };
+                }
                 return <image key={rest.id} href={href} x={rest.x} y={rest.y} width={rest.width} height={rest.height} {...commonProps} />;
               }
               case 'svg': {
                 const { svgString } = rest as SVGShape;
                 const svgHref = `data:image/svg+xml;base64,${typeof window !== 'undefined' ? window.btoa(unescape(encodeURIComponent(svgString))) : ''}`;
+                if (interactionState.type === 'moving' && selectedShapeIds.includes(rest.id)) {
+                    commonProps.style = { imageRendering: 'pixelated' };
+                }
                 return <image key={rest.id} href={svgHref} x={rest.x} y={rest.y} width={rest.width} height={rest.height} {...commonProps} />;
               }
               case 'path': {
