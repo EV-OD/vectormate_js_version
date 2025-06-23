@@ -238,8 +238,22 @@ export function useCanvasInteractions({
         addShape(newShape, true);
         setActiveTool('select');
     } else if (activeTool === 'svg') {
-        // TODO: Implement SVG placeholder creation
-        console.log("SVG tool not implemented yet");
+        const defaultSvgString = `<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" fill="#cccccc" /><text x="50" y="55" font-family="sans-serif" font-size="16" text-anchor="middle" fill="white">SVG</text></svg>`;
+        const dataUrl = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(defaultSvgString)))}`;
+        const newShape: SVGShape = {
+            id: nanoid(),
+            type: 'svg',
+            name: 'SVG',
+            x: pos.x - 50,
+            y: pos.y - 50,
+            width: 100,
+            height: 100,
+            rotation: 0,
+            opacity: 1,
+            svgString: defaultSvgString,
+            dataUrl: dataUrl,
+        };
+        addShape(newShape, true);
         setActiveTool('select');
     } else {
         const shapeName = activeTool.charAt(0).toUpperCase() + activeTool.slice(1);
