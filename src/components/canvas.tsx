@@ -66,7 +66,7 @@ export function Canvas(props: CanvasProps) {
       id="vector-canvas"
       ref={svgRef}
       className={cn("w-full h-full cursor-crosshair", {
-        'cursor-grab': props.activeTool === 'select' && !['resizing', 'marquee', 'moving', 'rotating'].includes(interactionState.type),
+        'cursor-grab': props.activeTool === 'pan' || (props.activeTool === 'select' && !['resizing', 'marquee', 'moving', 'rotating'].includes(interactionState.type)),
         'cursor-grabbing': ['moving', 'panning', 'rotating'].includes(interactionState.type),
         'cursor-nwse-resize': interactionState.type === 'resizing' && (interactionState.handle === 'nw' || interactionState.handle === 'se'),
         'cursor-nesw-resize': interactionState.type === 'resizing' && (interactionState.handle === 'ne' || interactionState.handle === 'sw'),

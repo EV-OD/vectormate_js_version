@@ -114,6 +114,14 @@ export function useCanvasInteractions({
     }
     const pos = getMousePosition(e);
     const target = e.target as SVGElement;
+    
+    if (activeTool === 'pan') {
+        e.stopPropagation();
+        const screenPos = getScreenPosition(e);
+        setInteractionState({ type: 'panning', startX: screenPos.x, startY: screenPos.y, initialPan: canvasView.pan });
+        return;
+    }
+
     const shapeId = target.dataset.shapeId;
     const handleName = target.dataset.handle as Handle;
     

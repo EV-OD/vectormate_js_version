@@ -54,7 +54,7 @@ export interface PathShape extends BaseShape {
 
 export type Shape = RectangleShape | CircleShape | PolygonShape | LineShape | ImageShape | SVGShape | PathShape;
 
-export type Tool = 'select' | 'rectangle' | 'circle' | 'polygon' | 'line' | 'brush';
+export type Tool = 'select' | 'rectangle' | 'circle' | 'polygon' | 'line' | 'brush' | 'pan';
 
 export type Handle = 'n' | 's' | 'e' | 'w' | 'nw' | 'ne' | 'sw' | 'se' | 'rotate';
 

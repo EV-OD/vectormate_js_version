@@ -70,6 +70,7 @@ export function VectorEditor() {
     canvasView,
     addShapes,
     deleteSelectedShapes,
+    activeTool,
     setActiveTool,
     setInteractionState,
     undo,

@@ -18,7 +18,8 @@ import {
   Eclipse, 
   Image,
   FileCode,
-  Brush
+  Brush,
+  Hand
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -82,6 +83,23 @@ export function Toolbar({
             </TooltipTrigger>
             <TooltipContent side="right">
               <p>{selectTool.tooltip}</p>
+            </TooltipContent>
+          </Tooltip>
+
+          {/* Pan Tool */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant={activeTool === 'pan' ? 'secondary' : 'ghost'}
+                size="icon"
+                onClick={() => onToolSelect('pan')}
+                className={cn(activeTool === 'pan' && 'text-primary ring-2 ring-primary/50')}
+              >
+                <Hand className="w-5 h-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right">
+              <p>Pan (Hold Space)</p>
             </TooltipContent>
           </Tooltip>
 

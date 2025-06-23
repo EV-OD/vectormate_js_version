@@ -9,6 +9,7 @@ type useKeyboardAndClipboardProps = {
     canvasView: CanvasView;
     addShapes: (shapes: Shape[]) => void;
     deleteSelectedShapes: () => void;
+    activeTool: Tool;
     setActiveTool: (tool: Tool) => void;
     setInteractionState: (state: InteractionState) => void;
     undo: () => void;
@@ -20,12 +21,14 @@ export function useKeyboardAndClipboard({
   canvasView,
   addShapes,
   deleteSelectedShapes,
+  activeTool,
   setActiveTool,
   setInteractionState,
   undo,
   redo,
 }: useKeyboardAndClipboardProps) {
     const [clipboard, setClipboard] = useState<Shape[]>([]);
+    const [previousTool, setPreviousTool] = useState<Tool | null>(null);
     const { toast } = useToast();
 
     const handleCopy = useCallback(() => {
@@ -49,8 +52,23 @@ export function useKeyboardAndClipboard({
     }, [clipboard, addShapes, canvasView.scale]);
 
     useEffect(() => {
+      const handleKeyUp = (e: KeyboardEvent) => {
+        if (e.key === ' ' && previousTool) {
+          e.preventDefault();
+          setActiveTool(previousTool);
+          setPreviousTool(null);
+        }
+      };
+
       const handleKeyDown = (e: KeyboardEvent) => {
         if ((e.target as HTMLElement).closest('input, textarea, [contenteditable=true]')) {
+          return;
+        }
+
+        if (e.key === ' ' && !e.repeat && !previousTool) {
+          e.preventDefault();
+          setPreviousTool(activeTool);
+          setActiveTool('pan');
           return;
         }
         
@@ -94,8 +112,15 @@ export function useKeyboardAndClipboard({
         }
       };
       window.addEventListener('keydown', handleKeyDown);
-      return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [deleteSelectedShapes, handleCopy, setActiveTool, setInteractionState, undo, redo]);
+      window.addEventListener('keyup', handleKeyUp);
+      return () => {
+        window.removeEventListener('keydown', handleKeyDown);
+        window.removeEventListener('keyup', handleKeyUp);
+        if (previousTool) {
+            setActiveTool(previousTool);
+        }
+      };
+    }, [deleteSelectedShapes, handleCopy, setActiveTool, setInteractionState, undo, redo, activeTool, previousTool]);
     
     useEffect(() => {
       const handlePasteEvent = (event: ClipboardEvent) => {
