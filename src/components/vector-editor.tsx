@@ -39,7 +39,7 @@ export function VectorEditor() {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; shapeId: string } | null>(null);
   
   const [canvasView, setCanvasView] = useState<CanvasView>({
-    background: 'solid',
+    background: 'grid',
     gridSize: 20,
     snapToGrid: true,
     snapToObjects: true,
