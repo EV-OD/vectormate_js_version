@@ -15,6 +15,7 @@ type CanvasProps = {
   updateShapes: (shapes: Shape[]) => void;
   interactionState: InteractionState;
   setInteractionState: (state: InteractionState) => void;
+  setContextMenu: (menu: { x: number; y: number; shapeId: string } | null) => void;
 };
 
 const SELECTION_COLOR = 'hsl(var(--primary))';
@@ -45,6 +46,7 @@ export function Canvas({
   updateShapes,
   interactionState,
   setInteractionState,
+  setContextMenu,
 }: CanvasProps) {
   const svgRef = useRef<SVGSVGElement>(null);
 
@@ -58,6 +60,9 @@ export function Canvas({
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
+    if (e.button !== 2) {
+      setContextMenu(null);
+    }
     const { x, y } = getMousePosition(e);
     const target = e.target as SVGElement;
     const shapeId = target.dataset.shapeId;
@@ -84,7 +89,8 @@ export function Canvas({
             } else if (!isSelected) {
               setSelectedShapeIds([shapeId]);
             }
-            const affectedIds = e.shiftKey ? (isSelected ? selectedShapeIds.filter(id => id !== shapeId) : [...selectedShapeIds, shapeId]) : [shapeId];
+            // Start moving only the selected shapes
+            const affectedIds = e.shiftKey && !isSelected ? [...selectedShapeIds, shapeId] : (isSelected && e.shiftKey ? selectedShapeIds.filter(id => id !== shapeId) : [shapeId]);
             const initialShapes = shapes.filter(s => affectedIds.includes(s.id));
             setInteractionState({ type: 'moving', startX: x, startY: y, initialShapes });
         } else {
@@ -143,12 +149,23 @@ export function Canvas({
             if (handle.includes('n')) { newBounds.height = initialBounds.height - dy; newBounds.y = initialBounds.y + dy; }
 
             if (e.shiftKey) {
-                const initialAspectRatio = initialBounds.width / initialBounds.height;
-                if (handle.includes('e') || handle.includes('w')) {
+                const initialAspectRatio = initialBounds.height === 0 ? 1 : initialBounds.width / initialBounds.height;
+                const newAspectRatio = newBounds.height === 0 ? 1 : newBounds.width / newBounds.height;
+
+                if (handle.includes('w') || handle.includes('e')) {
                     newBounds.height = newBounds.width / initialAspectRatio;
                     if (handle.includes('n')) newBounds.y = initialBounds.y + initialBounds.height - newBounds.height;
-                } else {
+                } else if (handle.includes('n') || handle.includes('s')) {
                     newBounds.width = newBounds.height * initialAspectRatio;
+                    if (handle.includes('w')) newBounds.x = initialBounds.x + initialBounds.width - newBounds.width;
+                } else { // corner handles
+                    if (newAspectRatio > initialAspectRatio) {
+                        newBounds.width = newBounds.height * initialAspectRatio;
+                    } else {
+                        newBounds.height = newBounds.width / initialAspectRatio;
+                    }
+
+                    if (handle.includes('n')) newBounds.y = initialBounds.y + initialBounds.height - newBounds.height;
                     if (handle.includes('w')) newBounds.x = initialBounds.x + initialBounds.width - newBounds.width;
                 }
             }
@@ -168,10 +185,15 @@ export function Canvas({
                 const updatedShape: Shape = {...shape, x: newX, y: newY, width: newWidth, height: newHeight};
 
                 if (updatedShape.type === 'polygon') {
-                  // Note: this doesn't visually scale star/heart props, only their bounding box.
-                  // A more robust solution would involve scaling the points themselves or using SVG scale transforms.
+                  const originalShape = initialShapes.find(s => s.id === shape.id) as PolygonShape;
+                  if (originalShape?.points) {
+                    const scaledPoints = originalShape.points.split(' ').map(p_str => {
+                        const [px, py] = p_str.split(',').map(Number);
+                        return `${px * scaleX},${py * scaleY}`;
+                    }).join(' ');
+                    (updatedShape as PolygonShape).points = scaledPoints;
+                  }
                 }
-
                 return updatedShape;
             });
             updateShapes(updatedShapes);
@@ -198,10 +220,31 @@ export function Canvas({
         setActiveTool('select');
     }
   };
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const target = e.target as SVGElement;
+    const shapeId = target.dataset.shapeId;
+
+    if (shapeId) {
+        if (!selectedShapeIds.includes(shapeId)) {
+            setSelectedShapeIds([shapeId]);
+        }
+        setContextMenu({
+            x: e.clientX,
+            y: e.clientY,
+            shapeId: shapeId,
+        });
+    } else {
+        setContextMenu(null);
+    }
+  };
   
   const selectionBox = useMemo(() => {
     if (selectedShapeIds.length === 0) return null;
     const selected = shapes.filter(s => selectedShapeIds.includes(s.id));
+    if (selected.length === 0) return null;
+
     // Don't show resize handles for rotated objects for simplicity
     if (selected.some(s => s.rotation !== 0)) {
         return { ...getBounds(selected), resizable: false };
@@ -220,6 +263,7 @@ export function Canvas({
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
+      onContextMenu={handleContextMenu}
     >
       <g>
         {shapes.map(shape => {
@@ -230,14 +274,15 @@ export function Canvas({
             fillOpacity: shape.opacity,
             className: "transition-all duration-75"
           };
+          const { transform: rotateTransform, ...restProps } = commonProps;
+
           switch (shape.type) {
             case 'rectangle':
               return <rect key={shape.id} x={shape.x} y={shape.y} width={shape.width} height={shape.height} {...commonProps} />;
             case 'circle':
               return <ellipse key={shape.id} cx={shape.x + shape.width / 2} cy={shape.y + shape.height / 2} rx={shape.width / 2} ry={shape.height / 2} {...commonProps} />;
             case 'polygon': {
-                const { transform, ...restProps } = commonProps;
-                return <polygon key={shape.id} points={shape.points} transform={`translate(${shape.x} ${shape.y}) ` + transform} {...restProps} />;
+                return <polygon key={shape.id} points={shape.points} transform={`translate(${shape.x} ${shape.y}) ${rotateTransform}`} {...restProps} />;
               }
           }
         })}

@@ -9,6 +9,7 @@ import { type Shape, type Tool, type InteractionState, PolygonShape } from '@/li
 import { exportToSvg, exportToJpeg } from '@/lib/export';
 import { useToast } from '@/hooks/use-toast';
 import { nanoid } from 'nanoid';
+import { ContextMenu } from './context-menu';
 
 type EditorState = {
   shapes: Shape[];
@@ -20,7 +21,9 @@ type Action =
   | { type: 'UPDATE_SHAPES'; payload: Shape[] }
   | { type: 'DELETE_SHAPES'; payload: string[] }
   | { type: 'SET_SELECTED_SHAPES'; payload: string[] }
-  | { type: 'APPLY_BOOLEAN'; payload: { operation: string; shapes: Shape[] } };
+  | { type: 'APPLY_BOOLEAN'; payload: { operation: string; shapes: Shape[] } }
+  | { type: 'BRING_TO_FRONT'; payload: string[] }
+  | { type: 'SEND_TO_BACK'; payload: string[] };
 
 function editorReducer(state: EditorState, action: Action): EditorState {
   switch (action.type) {
@@ -55,6 +58,16 @@ function editorReducer(state: EditorState, action: Action): EditorState {
         selectedShapeIds: [shape1.id],
       }
     }
+    case 'BRING_TO_FRONT': {
+      const toMove = state.shapes.filter(s => action.payload.includes(s.id));
+      const others = state.shapes.filter(s => !action.payload.includes(s.id));
+      return { ...state, shapes: [...others, ...toMove] };
+    }
+    case 'SEND_TO_BACK': {
+      const toMove = state.shapes.filter(s => action.payload.includes(s.id));
+      const others = state.shapes.filter(s => !action.payload.includes(s.id));
+      return { ...state, shapes: [...toMove, ...others] };
+    }
     default:
       return state;
   }
@@ -70,6 +83,8 @@ export function VectorEditor() {
   const [state, dispatch] = useReducer(editorReducer, initialState);
   const [activeTool, setActiveTool] = useState<Tool>('select');
   const [interactionState, setInteractionState] = useState<InteractionState>({ type: 'none' });
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; shapeId: string } | null>(null);
+  const [clipboard, setClipboard] = useState<Shape[]>([]);
   const { toast } = useToast();
 
   const handleExport = (format: 'svg' | 'jpeg') => {
@@ -84,9 +99,11 @@ export function VectorEditor() {
     }
   };
   
-  const addShape = (shape: Shape) => dispatch({ type: 'ADD_SHAPE', payload: shape });
+  const addShape = useCallback((shape: Shape) => dispatch({ type: 'ADD_SHAPE', payload: shape }), []);
   
-  const updateShapes = (updatedShapes: Shape[]) => dispatch({ type: 'UPDATE_SHAPES', payload: updatedShapes });
+  const updateShapes = useCallback((updatedShapes: Shape[]) => dispatch({ type: 'UPDATE_SHAPES', payload: updatedShapes }), []);
+
+  const setSelectedShapeIds = useCallback((ids: string[]) => dispatch({ type: 'SET_SELECTED_SHAPES', payload: ids }), []);
 
   const deleteSelectedShapes = useCallback(() => {
     if (state.selectedShapeIds.length > 0) {
@@ -94,7 +111,40 @@ export function VectorEditor() {
     }
   }, [state.selectedShapeIds]);
 
-  const setSelectedShapeIds = (ids: string[]) => dispatch({ type: 'SET_SELECTED_SHAPES', payload: ids });
+  const selectedShapes = state.shapes.filter(s => state.selectedShapeIds.includes(s.id));
+
+  const handleCopy = useCallback(() => {
+      if (selectedShapes.length > 0) {
+          setClipboard(selectedShapes);
+          toast({ title: `${selectedShapes.length} item(s) copied to clipboard.` });
+      }
+  }, [selectedShapes, toast]);
+
+  const handlePaste = useCallback(() => {
+      if (clipboard.length > 0) {
+          const newShapes = clipboard.map(shape => ({
+              ...shape,
+              id: nanoid(),
+              x: shape.x + 10,
+              y: shape.y + 10,
+          }));
+          newShapes.forEach(addShape);
+          setSelectedShapeIds(newShapes.map(s => s.id));
+          setClipboard(newShapes);
+      }
+  }, [clipboard, addShape, setSelectedShapeIds]);
+
+  const bringToFront = useCallback(() => {
+      if (state.selectedShapeIds.length > 0) {
+          dispatch({ type: 'BRING_TO_FRONT', payload: state.selectedShapeIds });
+      }
+  }, [state.selectedShapeIds]);
+
+  const sendToBack = useCallback(() => {
+      if (state.selectedShapeIds.length > 0) {
+          dispatch({ type: 'SEND_TO_BACK', payload: state.selectedShapeIds });
+      }
+  }, [state.selectedShapeIds]);
 
   const applyBooleanOperation = (operation: 'union' | 'subtract' | 'intersect' | 'exclude') => {
     if (state.selectedShapeIds.length < 2) {
@@ -152,12 +202,23 @@ export function VectorEditor() {
     }
   };
 
-  const selectedShapes = state.shapes.filter(s => state.selectedShapeIds.includes(s.id));
-
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.target as HTMLElement).closest('input, textarea, [contenteditable=true]')) {
         return;
+      }
+      
+      if (e.metaKey || e.ctrlKey) {
+        switch(e.key.toLowerCase()) {
+          case 'c':
+            e.preventDefault();
+            handleCopy();
+            return;
+          case 'v':
+            e.preventDefault();
+            handlePaste();
+            return;
+        }
       }
 
       if ((e.key === 'Backspace' || e.key === 'Delete')) {
@@ -177,7 +238,7 @@ export function VectorEditor() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [deleteSelectedShapes]);
+  }, [deleteSelectedShapes, handleCopy, handlePaste, setSelectedShapeIds]);
 
   return (
     <div className="flex flex-col h-screen bg-muted/40 font-sans" onDrop={handleDrop} onDragOver={(e) => e.preventDefault()}>
@@ -195,6 +256,7 @@ export function VectorEditor() {
             updateShapes={updateShapes}
             interactionState={interactionState}
             setInteractionState={setInteractionState}
+            setContextMenu={setContextMenu}
           />
         </main>
         <PropertiesPanel
@@ -203,6 +265,19 @@ export function VectorEditor() {
           onDelete={deleteSelectedShapes}
         />
       </div>
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          onClose={() => setContextMenu(null)}
+          onCopy={handleCopy}
+          onPaste={handlePaste}
+          canPaste={clipboard.length > 0}
+          onDelete={deleteSelectedShapes}
+          onBringToFront={bringToFront}
+          onSendToBack={sendToBack}
+        />
+      )}
     </div>
   );
 }
