@@ -128,6 +128,7 @@ export function useCanvasInteractions({
     if (activeTool === 'select') {
         // If Ctrl is pressed, always prioritize marquee selection.
         if (e.ctrlKey) {
+            e.stopPropagation(); // Stop from propagating to shape move
             setInteractionState({ type: 'marquee', startX: x, startY: y });
             return;
         }
@@ -518,15 +519,16 @@ export function useCanvasInteractions({
     if (interactionState.type === 'marquee' && marquee) {
         const isShapeInMarquee = (shape: Shape, marqueeBox: typeof marquee) => {
             if (!marqueeBox) return false;
-            const shapeRight = shape.x + shape.width;
-            const shapeBottom = shape.y + shape.height;
+            
+            const shapeBounds = getBounds([shape]);
             const marqueeRight = marqueeBox.x + marqueeBox.width;
             const marqueeBottom = marqueeBox.y + marqueeBox.height;
+
             return (
-                shape.x < marqueeRight &&
-                shapeRight > marqueeBox.x &&
-                shape.y < marqueeBottom &&
-                shapeBottom > marqueeBox.y
+                shapeBounds.x >= marqueeBox.x &&
+                shapeBounds.y >= marqueeBox.y &&
+                (shapeBounds.x + shapeBounds.width) <= marqueeRight &&
+                (shapeBounds.y + shapeBounds.height) <= marqueeBottom
             );
         };
         const idsInMarquee = shapes.filter(s => isShapeInMarquee(s, marquee)).map(s => s.id);
@@ -550,7 +552,7 @@ export function useCanvasInteractions({
                 const width = 50, height = 50;
                 let updatedShape: Shape = {...lastDrawnShape, width: width, height: height, x: lastDrawnShape.x - 25, y: lastDrawnShape.y - 25}
                 if (updatedShape.type === 'polygon') {
-                    (updatedShape as PolygonShape).points = getHexagonPoints(width, height);
+                    (updatedProps as PolygonShape).points = getHexagonPoints(width, height);
                 } else if (updatedShape.type === 'line') {
                     updatedShape.height = 0;
                 }
