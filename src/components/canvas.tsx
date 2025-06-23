@@ -53,6 +53,7 @@ export function Canvas({
 }: CanvasProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [activeSnapLines, setActiveSnapLines] = useState<{ vertical: number[], horizontal: number[] }>({ vertical: [], horizontal: [] });
+  const [marquee, setMarquee] = useState<{ x: number; y: number; width: number; height: number; } | null>(null);
 
   const getMousePosition = (e: React.MouseEvent): { x: number; y: number } => {
     if (!svgRef.current) return { x: 0, y: 0 };
@@ -119,7 +120,6 @@ export function Canvas({
     const shapeId = target.dataset.shapeId;
     const handleName = target.dataset.handle as Handle;
     
-    // Snapping is not needed on mousedown, only on move
     const { x, y } = pos;
 
     if (activeTool === 'select') {
@@ -134,21 +134,24 @@ export function Canvas({
               initialShapes: initialShapes,
               aspectRatios: initialShapes.map(s => s.height === 0 ? 1 : s.width / s.height),
             });
-          } else if (shapeId) {
+        } else if (shapeId) {
             const isSelected = selectedShapeIds.includes(shapeId);
-            if (e.shiftKey) {
-              setSelectedShapeIds(
-                isSelected ? selectedShapeIds.filter(id => id !== shapeId) : [...selectedShapeIds, shapeId]
-              );
-            } else if (!isSelected) {
-              setSelectedShapeIds([shapeId]);
-            }
-            const affectedIds = e.shiftKey && !isSelected ? [...selectedShapeIds, shapeId] : (isSelected && e.shiftKey ? selectedShapeIds.filter(id => id !== shapeId) : [shapeId]);
-            const initialShapes = shapes.filter(s => affectedIds.includes(s.id));
+            const newSelectedIds = e.shiftKey
+                ? (isSelected ? selectedShapeIds.filter(id => id !== shapeId) : [...selectedShapeIds, shapeId])
+                : (!isSelected ? [shapeId] : selectedShapeIds);
+
+            setSelectedShapeIds(newSelectedIds);
+            const initialShapes = shapes.filter(s => newSelectedIds.includes(s.id));
             setInteractionState({ type: 'moving', startX: x, startY: y, initialShapes });
-        } else {
-            setSelectedShapeIds([]);
-            setInteractionState({ type: 'panning', startX: x, startY: y });
+        } else { // Background click
+            if (e.ctrlKey) {
+                setInteractionState({ type: 'marquee', startX: x, startY: y });
+            } else {
+                if (!e.shiftKey) { // Don't deselect all if user is trying to shift-select and misses
+                    setSelectedShapeIds([]);
+                }
+                setInteractionState({ type: 'panning', startX: x, startY: y });
+            }
         }
     } else {
         const commonProps = { id: nanoid(), x, y, width: 0, height: 0, rotation: 0, fill: '#cccccc', opacity: 1 };
@@ -336,11 +339,43 @@ export function Canvas({
             updateShapes(updatedShapes);
             break;
         }
+        case 'marquee': {
+            const newX = Math.min(interactionState.startX, x);
+            const newY = Math.min(interactionState.startY, y);
+            const width = Math.abs(x - interactionState.startX);
+            const height = Math.abs(y - interactionState.startY);
+            setMarquee({ x: newX, y: newY, width, height });
+            break;
+        }
     }
     setActiveSnapLines(newActiveSnapLines);
   };
 
-  const handleMouseUp = () => {
+  const handleMouseUp = (e: React.MouseEvent) => {
+    if (interactionState.type === 'marquee' && marquee) {
+        const isShapeInMarquee = (shape: Shape, marqueeBox: typeof marquee) => {
+            const shapeRight = shape.x + shape.width;
+            const shapeBottom = shape.y + shape.height;
+            const marqueeRight = marqueeBox.x + marqueeBox.width;
+            const marqueeBottom = marqueeBox.y + marqueeBox.height;
+            return (
+                shape.x < marqueeRight &&
+                shapeRight > marqueeBox.x &&
+                shape.y < marqueeBottom &&
+                shapeBottom > marqueeBox.y
+            );
+        };
+        const idsInMarquee = shapes.filter(s => isShapeInMarquee(s, marquee)).map(s => s.id);
+        
+        if (e.shiftKey) {
+            const currentSelection = new Set(selectedShapeIds);
+            idsInMarquee.forEach(id => currentSelection.add(id));
+            setSelectedShapeIds(Array.from(currentSelection));
+        } else {
+            setSelectedShapeIds(idsInMarquee);
+        }
+    }
+    setMarquee(null);
     setActiveSnapLines({ vertical: [], horizontal: [] });
 
     const lastDrawnShape = interactionState.type === 'drawing' ? shapes.find(s => s.id === interactionState.currentShapeId) : null;
@@ -396,7 +431,7 @@ export function Canvas({
       id="vector-canvas"
       ref={svgRef}
       className={cn("w-full h-full cursor-crosshair", {
-        'cursor-grab': activeTool === 'select' && interactionState.type !== 'resizing',
+        'cursor-grab': activeTool === 'select' && interactionState.type !== 'resizing' && interactionState.type !== 'marquee',
         'cursor-grabbing': interactionState.type === 'moving' || interactionState.type === 'panning',
       })}
       onMouseDown={handleMouseDown}
@@ -425,6 +460,7 @@ export function Canvas({
                 ? 'hsl(var(--background))'
                 : `url(#${canvasView.background})`
             }
+            data-shape-id="background"
         />
       <g>
         {shapes.map(shape => {
@@ -461,6 +497,19 @@ export function Canvas({
           <SelectionBox bounds={selectionBox} resizable={selectionBox.resizable} onMouseDown={handleMouseDown} />
         )}
       </g>
+      {marquee && (
+          <rect
+              x={marquee.x}
+              y={marquee.y}
+              width={marquee.width}
+              height={marquee.height}
+              fill="hsl(var(--primary) / 0.2)"
+              stroke="hsl(var(--primary))"
+              strokeWidth="1"
+              strokeDasharray="2 2"
+              pointerEvents="none"
+          />
+      )}
     </svg>
   );
 }
