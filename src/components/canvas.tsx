@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useMemo, useState } from 'react';
+import React, { useRef, useMemo, useState, useCallback } from 'react';
 import { type Shape, type Tool, type InteractionState, type Handle, PolygonShape, ShapeType, CanvasView } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { nanoid } from 'nanoid';
@@ -23,6 +23,7 @@ type CanvasProps = {
 const SELECTION_COLOR = 'hsl(var(--primary))';
 const HANDLE_SIZE = 8;
 const SNAP_THRESHOLD = 6;
+const ROTATE_HANDLE_OFFSET = 24;
 
 function getHexagonPoints(width: number, height: number): string {
     const cx = width / 2;
@@ -137,14 +138,25 @@ export function Canvas({
         if (handleName && selectedShapeIds.length > 0) {
             e.stopPropagation();
             const initialShapes = shapes.filter(s => selectedShapeIds.includes(s.id));
-            setInteractionState({
-              type: 'resizing',
-              handle: handleName,
-              startX: x,
-              startY: y,
-              initialShapes: initialShapes,
-              aspectRatios: initialShapes.map(s => s.height === 0 ? 1 : s.width / s.height),
-            });
+            if (handleName === 'rotate') {
+                const bounds = getBounds(initialShapes);
+                setInteractionState({
+                    type: 'rotating',
+                    startX: x,
+                    startY: y,
+                    initialShapes: initialShapes,
+                    center: { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 },
+                });
+            } else {
+                setInteractionState({
+                  type: 'resizing',
+                  handle: handleName,
+                  startX: x,
+                  startY: y,
+                  initialShapes: initialShapes,
+                  aspectRatios: initialShapes.map(s => s.height === 0 ? 1 : s.width / s.height),
+                });
+            }
         } else if (shapeId && shapeId !== 'background') {
             const isSelected = selectedShapeIds.includes(shapeId);
             const newSelectedIds = e.shiftKey
@@ -312,7 +324,7 @@ export function Canvas({
         case 'resizing': {
             const ignoreIds = interactionState.initialShapes.map(s => s.id);
             const snapped = getSnappedCoords(x, y, ignoreIds);
-x = snapped.x;
+            x = snapped.x;
             y = snapped.y;
             newActiveSnapLines.vertical.push(...snapped.snapLines.vertical);
             newActiveSnapLines.horizontal.push(...snapped.snapLines.horizontal);
@@ -376,6 +388,47 @@ x = snapped.x;
                 return updatedShape;
             });
             updateShapes(updatedShapes);
+            break;
+        }
+        case 'rotating': {
+            const { initialShapes, center } = interactionState;
+            const startAngle = Math.atan2(interactionState.startY - center.y, interactionState.startX - center.x);
+            const currentAngle = Math.atan2(y - center.y, x - center.x);
+            const angleDelta = currentAngle - startAngle;
+
+            const updated = initialShapes.map(shape => {
+                const initialShape = interactionState.initialShapes.find(s => s.id === shape.id)!;
+                const newRotation = initialShape.rotation + angleDelta * (180 / Math.PI);
+                
+                const shapeInitialCenter = {
+                    x: initialShape.x + initialShape.width / 2,
+                    y: initialShape.y + initialShape.height / 2,
+                };
+
+                if (initialShapes.length > 1) {
+                    const dxInitial = shapeInitialCenter.x - center.x;
+                    const dyInitial = shapeInitialCenter.y - center.y;
+
+                    const newDx = dxInitial * Math.cos(angleDelta) - dyInitial * Math.sin(angleDelta);
+                    const newDy = dxInitial * Math.sin(angleDelta) + dyInitial * Math.cos(angleDelta);
+                    
+                    const newShapeCenter = {
+                        x: center.x + newDx,
+                        y: center.y + newDy,
+                    };
+                    
+                    return {
+                        ...shape,
+                        rotation: newRotation,
+                        x: newShapeCenter.x - shape.width / 2,
+                        y: newShapeCenter.y - shape.height / 2,
+                    };
+                }
+
+                return { ...shape, rotation: newRotation };
+            });
+
+            updateShapes(updated);
             break;
         }
         case 'marquee': {
@@ -481,11 +534,11 @@ x = snapped.x;
     if (selectedShapeIds.length === 0) return null;
     const selected = shapes.filter(s => selectedShapeIds.includes(s.id));
     if (selected.length === 0) return null;
+    
+    const bounds = getBounds(selected);
+    const resizable = !selected.some(s => s.rotation !== 0);
 
-    if (selected.some(s => s.rotation !== 0)) {
-        return { ...getBounds(selected), resizable: false };
-    }
-    return { ...getBounds(selected), resizable: true };
+    return { ...bounds, resizable, rotatable: selected.length > 0 };
   }, [shapes, selectedShapeIds]);
 
   return (
@@ -493,8 +546,8 @@ x = snapped.x;
       id="vector-canvas"
       ref={svgRef}
       className={cn("w-full h-full cursor-crosshair", {
-        'cursor-grab': activeTool === 'select' && interactionState.type !== 'resizing' && interactionState.type !== 'marquee' && interactionState.type !== 'moving',
-        'cursor-grabbing': interactionState.type === 'moving' || interactionState.type === 'panning',
+        'cursor-grab': activeTool === 'select' && !['resizing', 'marquee', 'moving', 'rotating'].includes(interactionState.type),
+        'cursor-grabbing': ['moving', 'panning', 'rotating'].includes(interactionState.type),
         'cursor-nwse-resize': interactionState.type === 'resizing' && (interactionState.handle === 'nw' || interactionState.handle === 'se'),
         'cursor-nesw-resize': interactionState.type === 'resizing' && (interactionState.handle === 'ne' || interactionState.handle === 'sw'),
         'cursor-ns-resize': interactionState.type === 'resizing' && (interactionState.handle === 'n' || interactionState.handle === 's'),
@@ -575,7 +628,7 @@ x = snapped.x;
         </g>
         <g>
           {selectionBox && (
-            <SelectionBox bounds={selectionBox} resizable={selectionBox.resizable} onMouseDown={handleMouseDown} scale={canvasView.scale} />
+            <SelectionBox bounds={selectionBox} resizable={selectionBox.resizable} rotatable={selectionBox.rotatable} onMouseDown={handleMouseDown} scale={canvasView.scale} />
           )}
         </g>
         {marquee && (
@@ -598,21 +651,46 @@ x = snapped.x;
 
 const getBounds = (shapes: Shape[]) => {
     if (shapes.length === 0) return { x: 0, y: 0, width: 0, height: 0 };
-    const x1 = Math.min(...shapes.map(s => s.x));
-    const y1 = Math.min(...shapes.map(s => s.y));
-    const x2 = Math.max(...shapes.map(s => s.x + s.width));
-    const y2 = Math.max(...shapes.map(s => s.y + s.height));
-    return { x: x1, y: y1, width: x2 - x1, height: y2 - y1 };
+
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
+    shapes.forEach(shape => {
+        const cx = shape.x + shape.width / 2;
+        const cy = shape.y + shape.height / 2;
+        const angleRad = shape.rotation * (Math.PI / 180);
+        const cos = Math.cos(angleRad);
+        const sin = Math.sin(angleRad);
+
+        const corners = [
+            { x: shape.x, y: shape.y },
+            { x: shape.x + shape.width, y: shape.y },
+            { x: shape.x, y: shape.y + shape.height },
+            { x: shape.x + shape.width, y: shape.y + shape.height },
+        ];
+
+        corners.forEach(corner => {
+            const rotatedX = (corner.x - cx) * cos - (corner.y - cy) * sin + cx;
+            const rotatedY = (corner.x - cx) * sin + (corner.y - cy) * cos + cy;
+            minX = Math.min(minX, rotatedX);
+            maxX = Math.max(maxX, rotatedX);
+            minY = Math.min(minY, rotatedY);
+            maxY = Math.max(maxY, rotatedY);
+        });
+    });
+
+    return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
 };
 
 const SelectionBox = ({
     bounds,
     resizable,
+    rotatable,
     onMouseDown,
     scale,
 }: {
     bounds: { x: number; y: number; width: number; height: number; };
     resizable: boolean;
+    rotatable: boolean;
     onMouseDown: (e: React.MouseEvent) => void;
     scale: number;
 }) => {
@@ -637,6 +715,7 @@ const SelectionBox = ({
             case 'sw': return { x: x, y: y + height };
             case 's': return { x: x + halfW, y: y + height };
             case 'se': return { x: x + width, y: y + height };
+            case 'rotate': return { x: x + halfW, y: y - ROTATE_HANDLE_OFFSET / scale };
         }
     };
     
@@ -656,12 +735,13 @@ const SelectionBox = ({
                 pointerEvents="none"
             />
             {resizable && handles.map(({ name, cursor }) => {
-                const { x, y } = getHandlePosition(name, bounds);
+                const pos = getHandlePosition(name, bounds);
+                if (!pos) return null;
                 return (
                     <rect
                         key={name}
-                        x={x - handleSize / 2}
-                        y={y - handleSize / 2}
+                        x={pos.x - handleSize / 2}
+                        y={pos.y - handleSize / 2}
                         width={handleSize}
                         height={handleSize}
                         fill={SELECTION_COLOR}
@@ -673,6 +753,26 @@ const SelectionBox = ({
                     />
                 );
             })}
+            {rotatable && (() => {
+                const topCenter = getHandlePosition('n', bounds);
+                const rotHandlePos = getHandlePosition('rotate', bounds);
+                return (
+                    <g>
+                        <line x1={topCenter.x} y1={topCenter.y} x2={rotHandlePos.x} y2={rotHandlePos.y} stroke={SELECTION_COLOR} strokeWidth={1 / scale} />
+                        <circle
+                            cx={rotHandlePos.x}
+                            cy={rotHandlePos.y}
+                            r={handleSize / 1.5}
+                            fill={SELECTION_COLOR}
+                            stroke="hsl(var(--background))"
+                            strokeWidth={1 / scale}
+                            className="cursor-grabbing"
+                            data-handle="rotate"
+                            onMouseDown={onMouseDown}
+                        />
+                    </g>
+                )
+            })()}
         </g>
     );
 };
