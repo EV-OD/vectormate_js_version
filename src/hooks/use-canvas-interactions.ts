@@ -162,10 +162,7 @@ export function useCanvasInteractions({
             setDraftShapes(movingShapes);
             setInteractionState({ type: 'moving', startX: x, startY: y, initialShapes: movingShapes });
         } else { // Background click
-            if (e.ctrlKey) {
-                setInteractionState({ type: 'marquee', startX: x, startY: y });
-            }
-            // Otherwise, do nothing, as requested.
+            setInteractionState({ type: 'marquee', startX: x, startY: y });
         }
     } else if (activeTool === 'brush') {
         const newShape: PathShape = {
@@ -510,28 +507,32 @@ export function useCanvasInteractions({
   }, [interactionState, getScreenPosition, onViewChange, getMousePosition, canvasView, shapes, draftShapes, getSnappedCoords, setMarquee, setActiveSnapLines, setInteractionState]);
 
   const handleMouseUp = useCallback((e: React.MouseEvent) => {
-    if (interactionState.type === 'marquee' && marquee) {
-        const isShapeInMarquee = (shape: Shape, marqueeBox: typeof marquee) => {
-            if (!marqueeBox) return false;
-            const shapeRight = shape.x + shape.width;
-            const shapeBottom = shape.y + shape.height;
-            const marqueeRight = marqueeBox.x + marqueeBox.width;
-            const marqueeBottom = marqueeBox.y + marqueeBox.height;
-            return (
-                shape.x < marqueeRight &&
-                shapeRight > marqueeBox.x &&
-                shape.y < marqueeBottom &&
-                shapeBottom > marqueeBox.y
-            );
-        };
-        const idsInMarquee = shapes.filter(s => isShapeInMarquee(s, marquee)).map(s => s.id);
-        
-        if (e.shiftKey) {
-            const currentSelection = new Set(selectedShapeIds);
-            idsInMarquee.forEach(id => currentSelection.add(id));
-            setSelectedShapeIds(Array.from(currentSelection));
-        } else {
-            setSelectedShapeIds(idsInMarquee);
+    if (interactionState.type === 'marquee') {
+        if (marquee) { // A drag happened, select items
+            const isShapeInMarquee = (shape: Shape, marqueeBox: typeof marquee) => {
+                if (!marqueeBox) return false;
+                const shapeRight = shape.x + shape.width;
+                const shapeBottom = shape.y + shape.height;
+                const marqueeRight = marqueeBox.x + marqueeBox.width;
+                const marqueeBottom = marqueeBox.y + marqueeBox.height;
+                return (
+                    shape.x < marqueeRight &&
+                    shapeRight > marqueeBox.x &&
+                    shape.y < marqueeBottom &&
+                    shapeBottom > marqueeBox.y
+                );
+            };
+            const idsInMarquee = shapes.filter(s => isShapeInMarquee(s, marquee)).map(s => s.id);
+            
+            if (e.shiftKey) {
+                const currentSelection = new Set(selectedShapeIds);
+                idsInMarquee.forEach(id => currentSelection.add(id));
+                setSelectedShapeIds(Array.from(currentSelection));
+            } else {
+                setSelectedShapeIds(idsInMarquee);
+            }
+        } else { // No drag happened, it was a click, so deselect
+            setSelectedShapeIds([]);
         }
     }
 
@@ -589,13 +590,27 @@ export function useCanvasInteractions({
     setActiveSnapLines({ vertical: [], horizontal: [] });
     setDraftShapes([]);
 
-    if (interactionState.type !== 'none' && interactionState.type !== 'panning') {
+    if (interactionState.type !== 'none') {
         setInteractionState({ type: 'none' });
     }
-    if (activeTool !== 'select' && !e.shiftKey) {
+    
+    if ((interactionState.type === 'drawing' || interactionState.type === 'brushing') && !e.shiftKey) {
         setActiveTool('select');
     }
-  }, [interactionState, marquee, shapes, selectedShapeIds, setSelectedShapeIds, draftShapes, addShape, updateShapes, commitUpdate, setInteractionState, activeTool, setActiveTool]);
+  }, [
+    interactionState,
+    marquee,
+    shapes,
+    selectedShapeIds,
+    setSelectedShapeIds,
+    draftShapes,
+    addShape,
+    updateShapes,
+    commitUpdate,
+    setInteractionState,
+    activeTool,
+    setActiveTool,
+  ]);
 
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
