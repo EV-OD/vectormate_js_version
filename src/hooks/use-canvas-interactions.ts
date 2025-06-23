@@ -174,7 +174,7 @@ export function useCanvasInteractions({
             stroke: '#000000',
             strokeWidth: 4,
             fill: 'none',
-            d: `M ${x} ${y}`,
+            d: 'M 0 0',
         };
         addShape(newShape, false);
         setInteractionState({ type: 'brushing', currentShapeId: newShape.id, points: [{ x, y }] });
@@ -486,8 +486,10 @@ export function useCanvasInteractions({
         case 'brushing': {
             const currentShape = shapes.find(s => s.id === interactionState.currentShapeId);
             if (!currentShape || currentShape.type !== 'path') break;
-
-            const updatedD = currentShape.d + ` L ${x} ${y}`;
+            
+            const relX = x - currentShape.x;
+            const relY = y - currentShape.y;
+            const updatedD = currentShape.d + ` L ${relX.toFixed(2)} ${relY.toFixed(2)}`;
             updateShapes([{ ...currentShape, d: updatedD }]);
             
             setInteractionState({
