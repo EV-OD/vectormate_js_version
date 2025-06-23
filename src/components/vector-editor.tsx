@@ -91,6 +91,8 @@ export function VectorEditor() {
     gridSize: 20,
     snapToGrid: true,
     snapToObjects: true,
+    scale: 1,
+    pan: { x: 0, y: 0 },
   });
 
   const handleViewChange = useCallback((viewUpdate: Partial<CanvasView>) => {
@@ -103,9 +105,9 @@ export function VectorEditor() {
     const { width, height } = canvasEl.getBoundingClientRect();
 
     if (format === 'svg') {
-      exportToSvg(state.shapes, width, height);
+      exportToSvg(state.shapes, width, height, canvasView);
     } else {
-      exportToJpeg(state.shapes, width, height);
+      exportToJpeg(state.shapes, width, height, canvasView);
     }
   };
   
@@ -135,14 +137,14 @@ export function VectorEditor() {
           const newShapes = clipboard.map(shape => ({
               ...shape,
               id: nanoid(),
-              x: shape.x + 10,
-              y: shape.y + 10,
+              x: shape.x + 10 / canvasView.scale,
+              y: shape.y + 10 / canvasView.scale,
           }));
           newShapes.forEach(addShape);
           setSelectedShapeIds(newShapes.map(s => s.id));
           setClipboard(newShapes);
       }
-  }, [clipboard, addShape, setSelectedShapeIds]);
+  }, [clipboard, addShape, setSelectedShapeIds, canvasView.scale]);
 
   const bringToFront = useCallback(() => {
       if (state.selectedShapeIds.length > 0) {
@@ -181,15 +183,17 @@ export function VectorEditor() {
     if (!canvasEl) return;
 
     const canvasRect = canvasEl.getBoundingClientRect();
-    const CTM = (canvasEl as unknown as SVGSVGElement).getScreenCTM();
+    let CTM = (canvasEl as unknown as SVGSVGElement).getScreenCTM();
+    if (!CTM) return;
+    CTM = CTM.inverse();
 
-    let x = e.clientX - canvasRect.left;
-    let y = e.clientY - canvasRect.top;
+    let point = (canvasEl as unknown as SVGSVGElement).createSVGPoint();
+    point.x = e.clientX - canvasRect.left;
+    point.y = e.clientY - canvasRect.top;
+    let { x, y } = point.matrixTransform(CTM);
 
-    if (CTM) {
-        x = (e.clientX - CTM.e) / CTM.a;
-        y = (e.clientY - CTM.f) / CTM.d;
-    }
+    x = (x - canvasView.pan.x) / canvasView.scale;
+    y = (y - canvasView.pan.y) / canvasView.scale;
     
     const addProp = (propShape: Omit<PolygonShape, 'id'>) => {
         addShape({ id: nanoid(), ...propShape });
@@ -268,6 +272,7 @@ export function VectorEditor() {
             setInteractionState={setInteractionState}
             setContextMenu={setContextMenu}
             canvasView={canvasView}
+            onViewChange={handleViewChange}
           />
         </main>
         <PropertiesPanel

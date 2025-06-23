@@ -17,6 +17,7 @@ type CanvasProps = {
   setInteractionState: (state: InteractionState) => void;
   setContextMenu: (menu: { x: number; y: number; shapeId: string } | null) => void;
   canvasView: CanvasView;
+  onViewChange: (view: Partial<CanvasView>) => void;
 };
 
 const SELECTION_COLOR = 'hsl(var(--primary))';
@@ -50,12 +51,13 @@ export function Canvas({
   setInteractionState,
   setContextMenu,
   canvasView,
+  onViewChange,
 }: CanvasProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [activeSnapLines, setActiveSnapLines] = useState<{ vertical: number[], horizontal: number[] }>({ vertical: [], horizontal: [] });
   const [marquee, setMarquee] = useState<{ x: number; y: number; width: number; height: number; } | null>(null);
 
-  const getMousePosition = (e: React.MouseEvent): { x: number; y: number } => {
+  const getScreenPosition = (e: React.MouseEvent | React.WheelEvent): { x: number; y: number } => {
     if (!svgRef.current) return { x: 0, y: 0 };
     const CTM = svgRef.current.getScreenCTM();
     if (CTM) {
@@ -64,17 +66,26 @@ export function Canvas({
     return { x: 0, y: 0 };
   };
 
+  const getMousePosition = (e: React.MouseEvent): { x: number; y: number } => {
+    const screenPos = getScreenPosition(e);
+    return {
+      x: (screenPos.x - canvasView.pan.x) / canvasView.scale,
+      y: (screenPos.y - canvasView.pan.y) / canvasView.scale,
+    };
+  };
+
   const getSnappedCoords = (x: number, y: number, ignoreIds: string[] = []) => {
     let snappedX = x;
     let snappedY = y;
     const newActiveSnapLines: { vertical: number[]; horizontal: number[] } = { vertical: [], horizontal: [] };
+    const snapThresholdWithZoom = SNAP_THRESHOLD / canvasView.scale;
 
     if (canvasView.snapToObjects) {
         const staticShapes = shapes.filter(s => !ignoreIds.includes(s.id));
         const staticVLines = staticShapes.flatMap(s => [s.x, s.x + s.width / 2, s.x + s.width]);
         const staticHLines = staticShapes.flatMap(s => [s.y, s.y + s.height / 2, s.y + s.height]);
 
-        let minVDelta = SNAP_THRESHOLD;
+        let minVDelta = snapThresholdWithZoom;
         staticVLines.forEach(staticLine => {
             const delta = Math.abs(x - staticLine);
             if (delta < minVDelta) {
@@ -82,9 +93,9 @@ export function Canvas({
                 snappedX = staticLine;
             }
         });
-        if (minVDelta < SNAP_THRESHOLD) newActiveSnapLines.vertical.push(snappedX);
+        if (minVDelta < snapThresholdWithZoom) newActiveSnapLines.vertical.push(snappedX);
 
-        let minHDelta = SNAP_THRESHOLD;
+        let minHDelta = snapThresholdWithZoom;
         staticHLines.forEach(staticLine => {
             const delta = Math.abs(y - staticLine);
             if (delta < minHDelta) {
@@ -92,18 +103,18 @@ export function Canvas({
                 snappedY = staticLine;
             }
         });
-        if (minHDelta < SNAP_THRESHOLD) newActiveSnapLines.horizontal.push(snappedY);
+        if (minHDelta < snapThresholdWithZoom) newActiveSnapLines.horizontal.push(snappedY);
     }
     
     if (canvasView.snapToGrid && canvasView.background !== 'solid') {
       const { gridSize } = canvasView;
-      const gridSnappedX = Math.round(snappedX / gridSize) * gridSize;
-      const gridSnappedY = Math.round(snappedY / gridSize) * gridSize;
+      const gridSnappedX = Math.round(x / gridSize) * gridSize;
+      const gridSnappedY = Math.round(y / gridSize) * gridSize;
 
-      if (Math.abs(gridSnappedX - snappedX) < SNAP_THRESHOLD) {
+      if (Math.abs(gridSnappedX - x) < snapThresholdWithZoom) {
           snappedX = gridSnappedX;
       }
-      if (Math.abs(gridSnappedY - snappedY) < SNAP_THRESHOLD) {
+      if (Math.abs(gridSnappedY - y) < snapThresholdWithZoom) {
           snappedY = gridSnappedY;
       }
     }
@@ -150,7 +161,8 @@ export function Canvas({
                 if (!e.shiftKey) { // Don't deselect all if user is trying to shift-select and misses
                     setSelectedShapeIds([]);
                 }
-                setInteractionState({ type: 'panning', startX: x, startY: y });
+                const screenPos = getScreenPosition(e);
+                setInteractionState({ type: 'panning', startX: screenPos.x, startY: screenPos.y, initialPan: canvasView.pan });
             }
         }
     } else {
@@ -169,10 +181,21 @@ export function Canvas({
   const handleMouseMove = (e: React.MouseEvent) => {
     if (interactionState.type === 'none') return;
     
-    const pos = getMousePosition(e);
-    let { x, y } = pos;
     const newActiveSnapLines: { vertical: number[]; horizontal: number[] } = { vertical: [], horizontal: [] };
     
+    if (interactionState.type === 'panning') {
+        const screenPos = getScreenPosition(e);
+        const dx = screenPos.x - interactionState.startX;
+        const dy = screenPos.y - interactionState.startY;
+        const newPan = {
+            x: interactionState.initialPan.x + dx,
+            y: interactionState.initialPan.y + dy,
+        };
+        onViewChange({ pan: newPan });
+        return;
+    }
+
+    let { x, y } = getMousePosition(e);
     const dx = x - interactionState.startX;
     const dy = y - interactionState.startY;
 
@@ -181,6 +204,7 @@ export function Canvas({
             let finalDx = dx;
             let finalDy = dy;
             const movingBounds = getBounds(interactionState.initialShapes);
+            const snapThresholdWithZoom = SNAP_THRESHOLD / canvasView.scale;
 
             if (canvasView.snapToObjects) {
                 const staticShapes = shapes.filter(s => !interactionState.initialShapes.some(is => is.id === s.id));
@@ -198,7 +222,7 @@ export function Canvas({
                     bottom: movingBounds.y + movingBounds.height + dy,
                 };
 
-                let bestVSnap = { delta: SNAP_THRESHOLD, line: 0, newDx: finalDx };
+                let bestVSnap = { delta: snapThresholdWithZoom, line: 0, newDx: finalDx };
                 staticVLines.forEach(staticLine => {
                     Object.values(movingVLines).forEach(movingLine => {
                         const delta = Math.abs(movingLine - staticLine);
@@ -207,12 +231,12 @@ export function Canvas({
                         }
                     });
                 });
-                if (bestVSnap.delta < SNAP_THRESHOLD) {
+                if (bestVSnap.delta < snapThresholdWithZoom) {
                     finalDx = bestVSnap.newDx;
                     newActiveSnapLines.vertical.push(bestVSnap.line);
                 }
 
-                let bestHSnap = { delta: SNAP_THRESHOLD, line: 0, newDy: finalDy };
+                let bestHSnap = { delta: snapThresholdWithZoom, line: 0, newDy: finalDy };
                 staticHLines.forEach(staticLine => {
                     Object.values(movingHLines).forEach(movingLine => {
                         const delta = Math.abs(movingLine - staticLine);
@@ -221,7 +245,7 @@ export function Canvas({
                         }
                     });
                 });
-                if (bestHSnap.delta < SNAP_THRESHOLD) {
+                if (bestHSnap.delta < snapThresholdWithZoom) {
                     finalDy = bestHSnap.newDy;
                     newActiveSnapLines.horizontal.push(bestHSnap.line);
                 }
@@ -235,10 +259,10 @@ export function Canvas({
               const snappedX = Math.round(currentX / gridSize) * gridSize;
               const snappedY = Math.round(currentY / gridSize) * gridSize;
               
-              if (Math.abs(snappedX - currentX) < SNAP_THRESHOLD) {
+              if (Math.abs(snappedX - currentX) < snapThresholdWithZoom) {
                  finalDx += snappedX - currentX;
               }
-              if (Math.abs(snappedY - currentY) < SNAP_THRESHOLD) {
+              if (Math.abs(snappedY - currentY) < snapThresholdWithZoom) {
                  finalDy += snappedY - currentY;
               }
             }
@@ -428,6 +452,26 @@ export function Canvas({
     }
   };
   
+  const handleWheel = (e: React.WheelEvent) => {
+    if ((e.target as HTMLElement).closest('aside, header')) {
+        return;
+    }
+    e.preventDefault();
+    const { scale, pan } = canvasView;
+    const zoomFactor = 1.1;
+    const newScale = e.deltaY < 0 ? scale * zoomFactor : scale / zoomFactor;
+    const clampedScale = Math.max(0.1, Math.min(10, newScale));
+
+    const screenPos = getScreenPosition(e);
+    
+    const newPan = {
+        x: screenPos.x - (screenPos.x - pan.x) * (clampedScale / scale),
+        y: screenPos.y - (screenPos.y - pan.y) * (clampedScale / scale),
+    };
+
+    onViewChange({ scale: clampedScale, pan: newPan });
+  };
+
   const selectionBox = useMemo(() => {
     if (selectedShapeIds.length === 0) return null;
     const selected = shapes.filter(s => selectedShapeIds.includes(s.id));
@@ -444,30 +488,38 @@ export function Canvas({
       id="vector-canvas"
       ref={svgRef}
       className={cn("w-full h-full cursor-crosshair", {
-        'cursor-grab': activeTool === 'select' && interactionState.type !== 'resizing' && interactionState.type !== 'marquee',
+        'cursor-grab': activeTool === 'select' && interactionState.type !== 'resizing' && interactionState.type !== 'marquee' && interactionState.type !== 'moving',
         'cursor-grabbing': interactionState.type === 'moving' || interactionState.type === 'panning',
+        'cursor-nwse-resize': interactionState.type === 'resizing' && (interactionState.handle === 'nw' || interactionState.handle === 'se'),
+        'cursor-nesw-resize': interactionState.type === 'resizing' && (interactionState.handle === 'ne' || interactionState.handle === 'sw'),
+        'cursor-ns-resize': interactionState.type === 'resizing' && (interactionState.handle === 'n' || interactionState.handle === 's'),
+        'cursor-ew-resize': interactionState.type === 'resizing' && (interactionState.handle === 'w' || interactionState.handle === 'e'),
       })}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onContextMenu={handleContextMenu}
+      onWheel={handleWheel}
     >
         <defs>
             {canvasView.background === 'grid' && (
               <pattern id="grid" width={canvasView.gridSize} height={canvasView.gridSize} patternUnits="userSpaceOnUse">
-                <path d={`M ${canvasView.gridSize} 0 L 0 0 0 ${canvasView.gridSize}`} fill="none" stroke="hsl(var(--border))" strokeWidth="0.5"/>
+                <path d={`M ${canvasView.gridSize} 0 L 0 0 0 ${canvasView.gridSize}`} fill="none" stroke="hsl(var(--border))" strokeWidth={0.5 / canvasView.scale}/>
               </pattern>
             )}
             {canvasView.background === 'dots' && (
               <pattern id="dots" width={canvasView.gridSize} height={canvasView.gridSize} patternUnits="userSpaceOnUse">
-                <circle cx="1" cy="1" r="1" fill="hsl(var(--border))" />
+                <circle cx={1 / canvasView.scale} cy={1 / canvasView.scale} r={1 / canvasView.scale} fill="hsl(var(--border))" />
               </pattern>
             )}
         </defs>
-          
+
+      <g transform={`translate(${canvasView.pan.x}, ${canvasView.pan.y}) scale(${canvasView.scale})`}>
         <rect
-            width="100%"
-            height="100%"
+            x={-50000}
+            y={-50000}
+            width={100000}
+            height={100000}
             fill={
                 canvasView.background === 'solid'
                 ? 'hsl(var(--background))'
@@ -475,54 +527,56 @@ export function Canvas({
             }
             data-shape-id="background"
         />
-      <g>
-        {shapes.map(shape => {
-          const commonProps = {
-            'data-shape-id': shape.id,
-            transform: `rotate(${shape.rotation} ${shape.x + shape.width / 2} ${shape.y + shape.height / 2})`,
-            fill: shape.fill,
-            fillOpacity: shape.opacity,
-            className: "transition-all duration-75"
-          };
+        <g>
+          {shapes.map(shape => {
+            const { ...rest } = shape;
+            const commonProps = {
+              'data-shape-id': rest.id,
+              transform: `rotate(${rest.rotation} ${rest.x + rest.width / 2} ${rest.y + rest.height / 2})`,
+              fill: rest.fill,
+              fillOpacity: rest.opacity,
+              className: "transition-all duration-75"
+            };
 
-          switch (shape.type) {
-            case 'rectangle':
-              return <rect key={shape.id} x={shape.x} y={shape.y} width={shape.width} height={shape.height} {...commonProps} />;
-            case 'circle':
-              return <ellipse key={shape.id} cx={shape.x + shape.width / 2} cy={shape.y + shape.height / 2} rx={shape.width / 2} ry={shape.height / 2} {...commonProps} />;
-            case 'polygon': {
-                const { transform, ...rest } = commonProps;
-                return <polygon key={shape.id} points={shape.points} transform={`translate(${shape.x} ${shape.y}) ${transform}`} {...rest} />;
-              }
-          }
-        })}
-      </g>
-      <g>
-        {activeSnapLines.vertical.map((lineX, i) => (
-            <line key={`v-${i}`} x1={lineX} y1="0" x2={lineX} y2="100%" stroke="hsl(var(--accent))" strokeWidth="0.5" strokeDasharray="3 3" />
-        ))}
-        {activeSnapLines.horizontal.map((lineY, i) => (
-            <line key={`h-${i}`} x1="0" y1={lineY} x2="100%" y2={lineY} stroke="hsl(var(--accent))" strokeWidth="0.5" strokeDasharray="3 3" />
-        ))}
-      </g>
-      <g>
-        {selectionBox && (
-          <SelectionBox bounds={selectionBox} resizable={selectionBox.resizable} onMouseDown={handleMouseDown} />
+            switch (rest.type) {
+              case 'rectangle':
+                return <rect key={rest.id} x={rest.x} y={rest.y} width={rest.width} height={rest.height} {...commonProps} />;
+              case 'circle':
+                return <ellipse key={rest.id} cx={rest.x + rest.width / 2} cy={rest.y + rest.height / 2} rx={rest.width / 2} ry={rest.height / 2} {...commonProps} />;
+              case 'polygon': {
+                  const { transform, ...polyProps } = commonProps;
+                  return <polygon key={rest.id} points={rest.points} transform={`translate(${rest.x} ${rest.y}) ${transform}`} {...polyProps} />;
+                }
+            }
+          })}
+        </g>
+        <g>
+          {activeSnapLines.vertical.map((lineX, i) => (
+              <line key={`v-${i}`} x1={lineX} y1="0" x2={lineX} y2="100%" stroke="hsl(var(--accent))" strokeWidth={0.5 / canvasView.scale} strokeDasharray={`${3 / canvasView.scale} ${3 / canvasView.scale}`} />
+          ))}
+          {activeSnapLines.horizontal.map((lineY, i) => (
+              <line key={`h-${i}`} x1="0" y1={lineY} x2="100%" y2={lineY} stroke="hsl(var(--accent))" strokeWidth={0.5 / canvasView.scale} strokeDasharray={`${3 / canvasView.scale} ${3 / canvasView.scale}`} />
+          ))}
+        </g>
+        <g>
+          {selectionBox && (
+            <SelectionBox bounds={selectionBox} resizable={selectionBox.resizable} onMouseDown={handleMouseDown} scale={canvasView.scale} />
+          )}
+        </g>
+        {marquee && (
+            <rect
+                x={marquee.x}
+                y={marquee.y}
+                width={marquee.width}
+                height={marquee.height}
+                fill="hsl(var(--primary) / 0.2)"
+                stroke="hsl(var(--primary))"
+                strokeWidth={1 / canvasView.scale}
+                strokeDasharray={`${2 / canvasView.scale} ${2 / canvasView.scale}`}
+                pointerEvents="none"
+            />
         )}
       </g>
-      {marquee && (
-          <rect
-              x={marquee.x}
-              y={marquee.y}
-              width={marquee.width}
-              height={marquee.height}
-              fill="hsl(var(--primary) / 0.2)"
-              stroke="hsl(var(--primary))"
-              strokeWidth="1"
-              strokeDasharray="2 2"
-              pointerEvents="none"
-          />
-      )}
     </svg>
   );
 }
@@ -540,10 +594,12 @@ const SelectionBox = ({
     bounds,
     resizable,
     onMouseDown,
+    scale,
 }: {
     bounds: { x: number; y: number; width: number; height: number; };
     resizable: boolean;
     onMouseDown: (e: React.MouseEvent) => void;
+    scale: number;
 }) => {
     if (bounds.width === 0 && bounds.height === 0) return null;
 
@@ -569,6 +625,8 @@ const SelectionBox = ({
         }
     };
     
+    const handleSize = HANDLE_SIZE / scale;
+
     return (
         <g>
             <rect
@@ -578,8 +636,8 @@ const SelectionBox = ({
                 height={bounds.height}
                 fill="none"
                 stroke={SELECTION_COLOR}
-                strokeWidth="1"
-                strokeDasharray="3 3"
+                strokeWidth={1 / scale}
+                strokeDasharray={`${3 / scale} ${3 / scale}`}
                 pointerEvents="none"
             />
             {resizable && handles.map(({ name, cursor }) => {
@@ -587,13 +645,13 @@ const SelectionBox = ({
                 return (
                     <rect
                         key={name}
-                        x={x - HANDLE_SIZE / 2}
-                        y={y - HANDLE_SIZE / 2}
-                        width={HANDLE_SIZE}
-                        height={HANDLE_SIZE}
+                        x={x - handleSize / 2}
+                        y={y - handleSize / 2}
+                        width={handleSize}
+                        height={handleSize}
                         fill={SELECTION_COLOR}
                         stroke="hsl(var(--background))"
-                        strokeWidth="1"
+                        strokeWidth={1 / scale}
                         className={cursor}
                         data-handle={name}
                         onMouseDown={onMouseDown}

@@ -1,7 +1,7 @@
-import { type Shape } from '@/lib/types';
+import { type Shape, type CanvasView } from '@/lib/types';
 
 function shapeToSvgElement(shape: Shape): string {
-  const common_attrs = `transform="rotate(${shape.rotation} ${shape.x + shape.width / 2} ${shape.y + shape.height / 2})" fill="${shape.fill}" fill-opacity="${shape.opacity}"`;
+  const common_attrs = `transform="rotate(${shape.rotation} ${shape.x + shape.width / 2} ${shape.y + shape.height / 2})" fill="${shape.fill}" fillOpacity="${shape.opacity}"`;
   switch (shape.type) {
     case 'rectangle':
       return `<rect x="${shape.x}" y="${shape.y}" width="${shape.width}" height="${shape.height}" ${common_attrs} />`;
@@ -9,14 +9,16 @@ function shapeToSvgElement(shape: Shape): string {
       return `<ellipse cx="${shape.x + shape.width / 2}" cy="${shape.y + shape.height / 2}" rx="${shape.width / 2}" ry="${shape.height / 2}" ${common_attrs} />`;
     case 'polygon':
        const transform = `translate(${shape.x}, ${shape.y})`;
-       return `<polygon points="${shape.points}" transform="${transform}" ${common_attrs} />`;
+       return `<polygon points="${shape.points}" transform="${transform} rotate(${shape.rotation} ${shape.width / 2} ${shape.height / 2})" fill="${shape.fill}" fill-opacity="${shape.opacity}" />`;
   }
 }
 
-export function exportToSvg(shapes: Shape[], width: number, height: number) {
+export function exportToSvg(shapes: Shape[], width: number, height: number, view: CanvasView) {
   const svgContent = `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
   <rect width="100%" height="100%" fill="hsl(var(--background))" />
-  ${shapes.map(shapeToSvgElement).join('\n  ')}
+  <g transform="translate(${view.pan.x} ${view.pan.y}) scale(${view.scale})">
+    ${shapes.map(shapeToSvgElement).join('\n  ')}
+  </g>
 </svg>`;
 
   const blob = new Blob([svgContent], { type: 'image/svg+xml' });
@@ -24,10 +26,12 @@ export function exportToSvg(shapes: Shape[], width: number, height: number) {
   triggerDownload(url, 'design.svg');
 }
 
-export function exportToJpeg(shapes: Shape[], width: number, height: number) {
+export function exportToJpeg(shapes: Shape[], width: number, height: number, view: CanvasView) {
   const svgContent = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
   <rect width="100%" height="100%" fill="hsl(var(--background))" />
-  ${shapes.map(shapeToSvgElement).join('\n  ')}
+  <g transform="translate(${view.pan.x} ${view.pan.y}) scale(${view.scale})">
+    ${shapes.map(shapeToSvgElement).join('\n  ')}
+  </g>
 </svg>`;
   const svgBlob = new Blob([svgContent], { type: 'image/svg+xml;charset=utf-8' });
   const svgUrl = URL.createObjectURL(svgBlob);

@@ -37,7 +37,7 @@ export type InteractionState =
   | { type: 'moving'; startX: number; startY: number; initialShapes: Shape[] }
   | { type: 'resizing'; handle: Handle; startX: number; startY: number; initialShapes: Shape[]; aspectRatios: number[] }
   | { type: 'rotating'; startX: number; startY: number; initialShapes: Shape[] }
-  | { type: 'panning', startX: number, startY: number }
+  | { type: 'panning', startX: number, startY: number, initialPan: { x: number, y: number } }
   | { type: 'marquee', startX: number, startY: number };
 
 export type CanvasView = {
@@ -45,4 +45,6 @@ export type CanvasView = {
   gridSize: number;
   snapToGrid: boolean;
   snapToObjects: boolean;
+  scale: number;
+  pan: { x: number, y: number };
 };
