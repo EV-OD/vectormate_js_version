@@ -1,4 +1,4 @@
-export type ShapeType = 'rectangle' | 'circle' | 'polygon';
+export type ShapeType = 'rectangle' | 'circle' | 'polygon' | 'line';
 
 export type BaseShape = {
   id: string;
@@ -8,8 +8,10 @@ export type BaseShape = {
   width: number;
   height: number;
   rotation: number;
-  fill: string;
-  opacity: number;
+  fill?: string;
+  opacity?: number;
+  stroke?: string;
+  strokeWidth?: number;
 };
 
 export interface RectangleShape extends BaseShape {
@@ -25,7 +27,11 @@ export interface PolygonShape extends BaseShape {
   points: string; // e.g., "0,0 100,0 50,100"
 }
 
-export type Shape = RectangleShape | CircleShape | PolygonShape;
+export interface LineShape extends BaseShape {
+    type: 'line';
+}
+
+export type Shape = RectangleShape | CircleShape | PolygonShape | LineShape;
 
 export type Tool = 'select' | ShapeType;
 

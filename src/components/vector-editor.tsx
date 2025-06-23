@@ -247,6 +247,7 @@ export function VectorEditor() {
           case 'r': setActiveTool('rectangle'); break;
           case 'o': setActiveTool('circle'); break;
           case 'p': setActiveTool('polygon'); break;
+          case 'l': setActiveTool('line'); break;
         }
       }
     };

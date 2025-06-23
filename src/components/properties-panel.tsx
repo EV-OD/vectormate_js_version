@@ -9,6 +9,7 @@ import { Slider } from './ui/slider';
 import { Trash2 } from 'lucide-react';
 import { ScrollArea } from './ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
+import { Separator } from './ui/separator';
 
 type PropertiesPanelProps = {
   selectedShapes: Shape[];
@@ -29,13 +30,20 @@ export function PropertiesPanel({ selectedShapes, onShapesUpdate, onDelete }: Pr
   const multipleSelected = selectedShapes.length > 1;
 
   const handlePropertyChange = (prop: keyof Shape, value: any) => {
-    if (multipleSelected) {
-        const updatedShapes = selectedShapes.map(s => ({...s, [prop]: value}));
-        onShapesUpdate(updatedShapes);
+    let updatedShapes;
+    if (prop === 'fill' || prop === 'opacity') {
+        updatedShapes = selectedShapes
+            .filter(s => s.type !== 'line')
+            .map(s => ({...s, [prop]: value}));
+    } else if (multipleSelected) {
+        updatedShapes = selectedShapes.map(s => ({...s, [prop]: value}));
     } else {
-        onShapesUpdate([{ ...shape, [prop]: value }]);
+        updatedShapes = [{ ...shape, [prop]: value }];
     }
+    onShapesUpdate(updatedShapes);
   };
+  
+  const showFillAndOpacity = selectedShapes.every(s => s.type !== 'line');
 
   return (
     <aside className="w-64 border-l bg-card text-card-foreground">
@@ -83,24 +91,41 @@ export function PropertiesPanel({ selectedShapes, onShapesUpdate, onDelete }: Pr
               <AccordionTrigger>Appearance</AccordionTrigger>
               <AccordionContent>
                 <div className="space-y-4">
+                  {showFillAndOpacity && (
+                    <>
+                      <div>
+                        <Label>Fill</Label>
+                        <div className="flex items-center gap-2">
+                          <Input type="color" value={shape.fill || '#cccccc'} onChange={e => handlePropertyChange('fill', e.target.value)} className="p-1 h-8 w-8" />
+                          <Input type="text" value={shape.fill || '#cccccc'} onChange={e => handlePropertyChange('fill', e.target.value)} />
+                        </div>
+                      </div>
+                      <div>
+                        <Label>Opacity</Label>
+                        <div className="flex items-center gap-2">
+                          <Slider
+                            value={[(shape.opacity || 1) * 100]}
+                            onValueChange={([val]) => handlePropertyChange('opacity', val / 100)}
+                            max={100}
+                            step={1}
+                          />
+                          <span className="text-sm text-muted-foreground w-12 text-right">{Math.round((shape.opacity || 1) * 100)}%</span>
+                        </div>
+                      </div>
+                      <Separator/>
+                    </>
+                  )}
+                  
                   <div>
-                    <Label>Fill</Label>
+                    <Label>Stroke</Label>
                     <div className="flex items-center gap-2">
-                      <Input type="color" value={shape.fill} onChange={e => handlePropertyChange('fill', e.target.value)} className="p-1 h-8 w-8" />
-                      <Input type="text" value={shape.fill} onChange={e => handlePropertyChange('fill', e.target.value)} />
+                      <Input type="color" value={shape.stroke || '#000000'} onChange={e => handlePropertyChange('stroke', e.target.value)} className="p-1 h-8 w-8" />
+                      <Input type="text" value={shape.stroke || '#000000'} onChange={e => handlePropertyChange('stroke', e.target.value)} />
                     </div>
                   </div>
                   <div>
-                    <Label>Opacity</Label>
-                    <div className="flex items-center gap-2">
-                      <Slider
-                        value={[shape.opacity * 100]}
-                        onValueChange={([val]) => handlePropertyChange('opacity', val / 100)}
-                        max={100}
-                        step={1}
-                      />
-                      <span className="text-sm text-muted-foreground w-12 text-right">{Math.round(shape.opacity * 100)}%</span>
-                    </div>
+                    <Label htmlFor="stroke-width">Stroke Width</Label>
+                    <Input id="stroke-width" type="number" value={Math.round(shape.strokeWidth || 0)} min={0} onChange={e => handlePropertyChange('strokeWidth', Math.max(0, Number(e.target.value)))} />
                   </div>
                 </div>
               </AccordionContent>

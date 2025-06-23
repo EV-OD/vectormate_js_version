@@ -166,12 +166,15 @@ export function Canvas({
             }
         }
     } else {
-        const commonProps = { id: nanoid(), x, y, width: 0, height: 0, rotation: 0, fill: '#cccccc', opacity: 1 };
+        const commonProps = { id: nanoid(), x, y, width: 0, height: 0, rotation: 0 };
         let newShape: Shape;
         if(activeTool === 'polygon') {
-            newShape = { ...commonProps, type: 'polygon', points: '' };
-        } else {
-            newShape = { ...commonProps, type: activeTool as Exclude<ShapeType, 'polygon'> };
+            newShape = { ...commonProps, type: 'polygon', points: '', fill: '#cccccc', opacity: 1, strokeWidth: 0 };
+        } else if (activeTool === 'line') {
+            newShape = { ...commonProps, type: 'line', stroke: '#000000', strokeWidth: 2 };
+        }
+        else {
+            newShape = { ...commonProps, type: activeTool as Exclude<ShapeType, 'polygon' | 'line'>, fill: '#cccccc', opacity: 1, strokeWidth: 0 };
         }
       addShape(newShape);
       setInteractionState({ type: 'drawing', shapeType: activeTool, startX: x, startY: y, currentShapeId: newShape.id });
@@ -287,7 +290,7 @@ export function Canvas({
             let newX = x > interactionState.startX ? interactionState.startX : x;
             let newY = y > interactionState.startY ? interactionState.startY : y;
 
-            if (e.shiftKey) {
+            if (e.shiftKey && currentShape.type !== 'line') {
                 const size = Math.max(newWidth, newHeight);
                 newWidth = size;
                 newHeight = size;
@@ -309,7 +312,7 @@ export function Canvas({
         case 'resizing': {
             const ignoreIds = interactionState.initialShapes.map(s => s.id);
             const snapped = getSnappedCoords(x, y, ignoreIds);
-            x = snapped.x;
+x = snapped.x;
             y = snapped.y;
             newActiveSnapLines.vertical.push(...snapped.snapLines.vertical);
             newActiveSnapLines.horizontal.push(...snapped.snapLines.horizontal);
@@ -416,11 +419,13 @@ export function Canvas({
     setActiveSnapLines({ vertical: [], horizontal: [] });
 
     const lastDrawnShape = interactionState.type === 'drawing' ? shapes.find(s => s.id === interactionState.currentShapeId) : null;
-    if (lastDrawnShape && (lastDrawnShape.width === 0 || lastDrawnShape.height === 0)) {
+    if (lastDrawnShape && (lastDrawnShape.width === 0 && lastDrawnShape.height === 0)) {
         const width = 50, height = 50;
         let updatedShape: Shape = {...lastDrawnShape, width: width, height: height, x: lastDrawnShape.x - 25, y: lastDrawnShape.y - 25}
         if (updatedShape.type === 'polygon') {
             updatedShape.points = getHexagonPoints(width, height);
+        } else if (updatedShape.type === 'line') {
+            updatedShape.height = 0; // a point-click line should just be horizontal
         }
         updateShapes([updatedShape])
     }
@@ -530,13 +535,20 @@ export function Canvas({
         <g>
           {shapes.map(shape => {
             const { ...rest } = shape;
-            const commonProps = {
+            const commonProps: any = {
               'data-shape-id': rest.id,
               transform: `rotate(${rest.rotation} ${rest.x + rest.width / 2} ${rest.y + rest.height / 2})`,
-              fill: rest.fill,
-              fillOpacity: rest.opacity,
+              stroke: rest.stroke,
+              strokeWidth: rest.strokeWidth,
               className: "transition-all duration-75"
             };
+            
+            if (rest.type !== 'line') {
+              commonProps.fill = rest.fill;
+              commonProps.fillOpacity = rest.opacity;
+            } else {
+              commonProps.fill = "none";
+            }
 
             switch (rest.type) {
               case 'rectangle':
@@ -544,9 +556,12 @@ export function Canvas({
               case 'circle':
                 return <ellipse key={rest.id} cx={rest.x + rest.width / 2} cy={rest.y + rest.height / 2} rx={rest.width / 2} ry={rest.height / 2} {...commonProps} />;
               case 'polygon': {
-                  const { transform, ...polyProps } = commonProps;
-                  return <polygon key={rest.id} points={rest.points} transform={`translate(${rest.x} ${rest.y}) ${transform}`} {...polyProps} />;
-                }
+                  const { transform: polyTransform, ...polyProps } = commonProps;
+                  return <polygon key={rest.id} points={rest.points} transform={`translate(${rest.x} ${rest.y}) ${polyTransform}`} {...polyProps} />;
+              }
+              case 'line': {
+                  return <line key={rest.id} x1={rest.x} y1={rest.y} x2={rest.x + rest.width} y2={rest.y + rest.height} {...commonProps} />;
+              }
             }
           })}
         </g>

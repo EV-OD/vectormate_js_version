@@ -1,7 +1,8 @@
 import { type Shape, type CanvasView } from '@/lib/types';
 
 function shapeToSvgElement(shape: Shape): string {
-  const common_attrs = `transform="rotate(${shape.rotation} ${shape.x + shape.width / 2} ${shape.y + shape.height / 2})" fill="${shape.fill}" fillOpacity="${shape.opacity}"`;
+  const common_attrs = `transform="rotate(${shape.rotation} ${shape.x + shape.width / 2} ${shape.y + shape.height / 2})" fill="${shape.type === 'line' ? 'none' : (shape.fill || 'transparent')}" fill-opacity="${shape.opacity || 1}" stroke="${shape.stroke || 'none'}" stroke-width="${shape.strokeWidth || 0}"`;
+  
   switch (shape.type) {
     case 'rectangle':
       return `<rect x="${shape.x}" y="${shape.y}" width="${shape.width}" height="${shape.height}" ${common_attrs} />`;
@@ -9,7 +10,9 @@ function shapeToSvgElement(shape: Shape): string {
       return `<ellipse cx="${shape.x + shape.width / 2}" cy="${shape.y + shape.height / 2}" rx="${shape.width / 2}" ry="${shape.height / 2}" ${common_attrs} />`;
     case 'polygon':
        const transform = `translate(${shape.x}, ${shape.y})`;
-       return `<polygon points="${shape.points}" transform="${transform} rotate(${shape.rotation} ${shape.width / 2} ${shape.height / 2})" fill="${shape.fill}" fill-opacity="${shape.opacity}" />`;
+       return `<polygon points="${shape.points}" transform="${transform} rotate(${shape.rotation} ${shape.width / 2} ${shape.height / 2})" fill="${shape.fill}" fill-opacity="${shape.opacity}" stroke="${shape.stroke || 'none'}" stroke-width="${shape.strokeWidth || 0}" />`;
+    case 'line':
+        return `<line x1="${shape.x}" y1="${shape.y}" x2="${shape.x + shape.width}" y2="${shape.y + shape.height}" ${common_attrs} />`;
   }
 }
 
