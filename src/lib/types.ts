@@ -18,6 +18,9 @@ export type BaseShape = {
   strokeOpacity?: number;
   strokeWidth?: number;
   borderRadius?: number;
+  isClippingMask?: boolean;
+  clippedBy?: string;
+  strokeDasharray?: string;
 };
 
 export interface RectangleShape extends BaseShape {

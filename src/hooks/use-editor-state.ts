@@ -152,10 +152,32 @@ export function useEditorState() {
 
   const deleteShapesByIds = useCallback((ids: string[]) => {
     if (ids.length > 0) {
-      setState(current => ({
-        shapes: current.shapes.filter(s => !ids.includes(s.id)),
-        selectedShapeIds: [],
-      }), true);
+      setState(current => {
+        const shapesToDelete = current.shapes.filter(s => ids.includes(s.id));
+        const maskIdsToDelete = new Set(shapesToDelete.filter(s => s.isClippingMask).map(s => s.id));
+
+        if (maskIdsToDelete.size === 0) {
+            return {
+                shapes: current.shapes.filter(s => !ids.includes(s.id)),
+                selectedShapeIds: [],
+            };
+        }
+
+        const newShapes = current.shapes
+            .filter(s => !ids.includes(s.id))
+            .map(s => {
+                if (s.clippedBy && maskIdsToDelete.has(s.clippedBy)) {
+                    const { clippedBy, ...rest } = s;
+                    return rest as Shape;
+                }
+                return s;
+            });
+
+        return {
+            shapes: newShapes,
+            selectedShapeIds: [],
+        };
+      }, true);
     }
   }, [setState]);
   
@@ -288,6 +310,53 @@ export function useEditorState() {
         });
     }
   }, [state.present, setState, toast]);
+
+  const createClippingMask = useCallback(() => {
+    setState(current => {
+        if (current.selectedShapeIds.length !== 2) {
+            toast({ title: "Selection Error", description: "Please select exactly two shapes.", variant: "destructive" });
+            return current;
+        }
+
+        const indices = current.selectedShapeIds.map(id => current.shapes.findIndex(s => s.id === id));
+        const topIndex = Math.max(...indices);
+        const bottomIndex = Math.min(...indices);
+
+        const maskShape = current.shapes[topIndex];
+        const contentShape = current.shapes[bottomIndex];
+
+        if (maskShape.isClippingMask || contentShape.clippedBy) {
+            toast({ title: "Invalid Operation", description: "Cannot clip a mask or an already clipped shape.", variant: "destructive" });
+            return current;
+        }
+
+        const updatedMask = {
+            ...maskShape,
+            isClippingMask: true,
+            fill: 'none',
+            stroke: 'hsl(var(--accent))',
+            strokeWidth: 1 / state.present.shapes.length, // Scale stroke for visibility
+            strokeDasharray: '5 5',
+            opacity: 1,
+        };
+
+        const updatedContent = {
+            ...contentShape,
+            clippedBy: maskShape.id,
+        };
+
+        const newShapes = current.shapes.map(s => {
+            if (s.id === maskShape.id) return updatedMask;
+            if (s.id === contentShape.id) return updatedContent;
+            return s;
+        });
+
+        return {
+            shapes: newShapes,
+            selectedShapeIds: [contentShape.id],
+        };
+    }, true);
+  }, [setState, toast, state.present.shapes.length]);
   
   return {
     shapes: state.present.shapes,
@@ -304,6 +373,7 @@ export function useEditorState() {
     duplicateShapes,
     reorderShapes,
     renameShape,
+    createClippingMask,
     undo,
     redo,
     canUndo,

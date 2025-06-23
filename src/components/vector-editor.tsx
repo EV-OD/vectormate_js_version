@@ -28,6 +28,7 @@ export function VectorEditor() {
     duplicateShapes,
     reorderShapes,
     renameShape,
+    createClippingMask,
     undo,
     redo,
     canUndo,
@@ -163,6 +164,7 @@ export function VectorEditor() {
   };
 
   const isSingleImageSelected = selectedShapes.length === 1 && selectedShapes[0].type === 'image';
+  const canCreateClippingMask = selectedShapeIds.length === 2;
 
   return (
     <div className="flex flex-col h-screen bg-muted/40 font-sans">
@@ -218,6 +220,8 @@ export function VectorEditor() {
           onSendToBack={() => sendToBack(selectedShapeIds)}
           canCrop={isSingleImageSelected}
           onCrop={() => setCroppingImageId(selectedShapeIds[0])}
+          canCreateClippingMask={canCreateClippingMask}
+          onCreateClippingMask={createClippingMask}
         />
       )}
       {croppingShape && (

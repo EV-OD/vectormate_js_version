@@ -62,6 +62,57 @@ export function Canvas(props: CanvasProps) {
     }
   }, [shapes, draftShapes, selectedShapeIds]);
 
+  const clipPathDefs = useMemo(() => {
+    return shapes
+      .filter((shape) => shape.isClippingMask)
+      .map((mask) => {
+        const { ...rest } = mask;
+        const transform = `rotate(${rest.rotation} ${rest.x + rest.width / 2} ${rest.y + rest.height / 2})`;
+        let element;
+
+        switch (rest.type) {
+          case 'rectangle': {
+            const rect = rest as RectangleShape;
+            element = <rect x={rect.x} y={rect.y} width={rect.width} height={rect.height} rx={rect.borderRadius} transform={transform} />;
+            break;
+          }
+          case 'circle': {
+            element = <ellipse cx={rest.x + rest.width / 2} cy={rest.y + rest.height / 2} rx={rest.width / 2} ry={rest.height / 2} transform={transform} />;
+            break;
+          }
+          case 'polygon': {
+            const polyTransform = `translate(${rest.x}, ${rest.y}) ${transform}`;
+            element = <polygon points={(rest as PolygonShape).points} transform={polyTransform} />;
+            break;
+          }
+          case 'path': {
+            const pathTransform = `translate(${rest.x}, ${rest.y}) ${transform}`;
+            element = <path d={(rest as PathShape).d} transform={pathTransform} />;
+            break;
+          }
+          case 'text': {
+            const textShape = rest as TextShape;
+            element = (
+              <text x={textShape.x} y={textShape.y} fontFamily={textShape.fontFamily} fontSize={textShape.fontSize} fontWeight={textShape.fontWeight} dominantBaseline="text-before-edge" transform={transform}>
+                {textShape.text}
+              </text>
+            );
+            break;
+          }
+          default:
+            element = null;
+        }
+
+        if (!element) return null;
+
+        return (
+          <clipPath key={`clip-path-${mask.id}`} id={`clip-${mask.id}`}>
+            {element}
+          </clipPath>
+        );
+      });
+  }, [shapes]);
+
   return (
     <svg
       id="vector-canvas"
@@ -82,6 +133,7 @@ export function Canvas(props: CanvasProps) {
       onWheel={handleWheel}
     >
         <defs>
+            {clipPathDefs}
             {canvasView.background === 'grid' && (
               <pattern id="grid" width={canvasView.gridSize} height={canvasView.gridSize} patternUnits="userSpaceOnUse">
                 <path d={`M ${canvasView.gridSize} 0 L 0 0 0 ${canvasView.gridSize}`} fill="none" stroke="hsl(var(--border))" strokeWidth={0.5 / canvasView.scale}/>
@@ -114,6 +166,13 @@ export function Canvas(props: CanvasProps) {
               'data-shape-id': rest.id,
               transform: `rotate(${rest.rotation} ${rest.x + rest.width / 2} ${rest.y + rest.height / 2})`,
             };
+
+            if (rest.clippedBy) {
+                commonProps.clipPath = `url(#clip-${rest.clippedBy})`;
+            }
+            if (rest.strokeDasharray) {
+                commonProps.strokeDasharray = rest.strokeDasharray;
+            }
             
             if (rest.type !== 'line') {
               commonProps.opacity = rest.opacity ?? 1;
