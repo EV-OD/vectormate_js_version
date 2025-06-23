@@ -115,7 +115,7 @@ export function useCanvasInteractions({
     const pos = getMousePosition(e);
     const target = e.target as SVGElement;
     
-    if (activeTool === 'pan') {
+    if (activeTool === 'pan' || (e.button === 1)) { // Pan on middle mouse button
         e.stopPropagation();
         const screenPos = getScreenPosition(e);
         setInteractionState({ type: 'panning', startX: screenPos.x, startY: screenPos.y, initialPan: canvasView.pan });
@@ -162,7 +162,11 @@ export function useCanvasInteractions({
             setDraftShapes(movingShapes);
             setInteractionState({ type: 'moving', startX: x, startY: y, initialShapes: movingShapes });
         } else { // Background click
-            setInteractionState({ type: 'marquee', startX: x, startY: y });
+            if (e.ctrlKey) {
+                setInteractionState({ type: 'marquee', startX: x, startY: y });
+            } else {
+                setSelectedShapeIds([]);
+            }
         }
     } else if (activeTool === 'brush') {
         const newShape: PathShape = {
@@ -507,32 +511,28 @@ export function useCanvasInteractions({
   }, [interactionState, getScreenPosition, onViewChange, getMousePosition, canvasView, shapes, draftShapes, getSnappedCoords, setMarquee, setActiveSnapLines, setInteractionState]);
 
   const handleMouseUp = useCallback((e: React.MouseEvent) => {
-    if (interactionState.type === 'marquee') {
-        if (marquee) { // A drag happened, select items
-            const isShapeInMarquee = (shape: Shape, marqueeBox: typeof marquee) => {
-                if (!marqueeBox) return false;
-                const shapeRight = shape.x + shape.width;
-                const shapeBottom = shape.y + shape.height;
-                const marqueeRight = marqueeBox.x + marqueeBox.width;
-                const marqueeBottom = marqueeBox.y + marqueeBox.height;
-                return (
-                    shape.x < marqueeRight &&
-                    shapeRight > marqueeBox.x &&
-                    shape.y < marqueeBottom &&
-                    shapeBottom > marqueeBox.y
-                );
-            };
-            const idsInMarquee = shapes.filter(s => isShapeInMarquee(s, marquee)).map(s => s.id);
-            
-            if (e.shiftKey) {
-                const currentSelection = new Set(selectedShapeIds);
-                idsInMarquee.forEach(id => currentSelection.add(id));
-                setSelectedShapeIds(Array.from(currentSelection));
-            } else {
-                setSelectedShapeIds(idsInMarquee);
-            }
-        } else { // No drag happened, it was a click, so deselect
-            setSelectedShapeIds([]);
+    if (interactionState.type === 'marquee' && marquee) {
+        const isShapeInMarquee = (shape: Shape, marqueeBox: typeof marquee) => {
+            if (!marqueeBox) return false;
+            const shapeRight = shape.x + shape.width;
+            const shapeBottom = shape.y + shape.height;
+            const marqueeRight = marqueeBox.x + marqueeBox.width;
+            const marqueeBottom = marqueeBox.y + marqueeBox.height;
+            return (
+                shape.x < marqueeRight &&
+                shapeRight > marqueeBox.x &&
+                shape.y < marqueeBottom &&
+                shapeBottom > marqueeBox.y
+            );
+        };
+        const idsInMarquee = shapes.filter(s => isShapeInMarquee(s, marquee)).map(s => s.id);
+        
+        if (e.shiftKey) {
+            const currentSelection = new Set(selectedShapeIds);
+            idsInMarquee.forEach(id => currentSelection.add(id));
+            setSelectedShapeIds(Array.from(currentSelection));
+        } else {
+            setSelectedShapeIds(idsInMarquee);
         }
     }
 
@@ -590,7 +590,9 @@ export function useCanvasInteractions({
     setActiveSnapLines({ vertical: [], horizontal: [] });
     setDraftShapes([]);
 
-    if (interactionState.type !== 'none') {
+    if (interactionState.type !== 'none' && interactionState.type !== 'panning') {
+        setInteractionState({ type: 'none' });
+    } else if(interactionState.type === 'panning' && e.button === 1) {
         setInteractionState({ type: 'none' });
     }
     
@@ -608,7 +610,6 @@ export function useCanvasInteractions({
     updateShapes,
     commitUpdate,
     setInteractionState,
-    activeTool,
     setActiveTool,
   ]);
 
