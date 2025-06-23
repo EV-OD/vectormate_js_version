@@ -16,8 +16,6 @@ import {
   Diff, 
   Layers, 
   Eclipse, 
-  Star, 
-  Heart,
   Image,
   FileCode,
   Brush
@@ -55,11 +53,6 @@ const booleanOps: { name: 'union' | 'subtract' | 'intersect' | 'exclude', icon: 
   { name: 'exclude', icon: Eclipse, tooltip: 'Exclude' },
 ];
 
-const props = [
-  { name: 'star', icon: Star, tooltip: 'Star Prop' },
-  { name: 'heart', icon: Heart, tooltip: 'Heart Prop' },
-];
-
 export function Toolbar({ 
   activeTool, 
   onToolSelect, 
@@ -68,10 +61,6 @@ export function Toolbar({
   onAddImage,
   onAddSvg,
 }: ToolbarProps) {
-  const handleDragStart = (e: React.DragEvent<HTMLButtonElement>, propType: string) => {
-    e.dataTransfer.setData("application/vectormate-prop", propType);
-  };
-
   const ActiveShapeIcon = shapeTools.find(t => t.name === activeTool)?.icon || PenTool;
   const isShapeToolActive = shapeTools.some(t => t.name === activeTool);
 
@@ -204,29 +193,6 @@ export function Toolbar({
               <p>Add SVG</p>
             </TooltipContent>
           </Tooltip>
-        </div>
-
-        <div className="mt-auto flex flex-col gap-4">
-          <Separator />
-          <h3 className="text-xs text-muted-foreground font-semibold text-center">PROPS</h3>
-          {props.map(({ name, icon: Icon, tooltip }) => (
-            <Tooltip key={name}>
-              <TooltipTrigger asChild>
-                <Button
-                  variant='ghost'
-                  size="icon"
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, name)}
-                  className="cursor-grab"
-                >
-                  <Icon className="w-5 h-5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right">
-                <p>{tooltip}</p>
-              </TooltipContent>
-            </Tooltip>
-          ))}
         </div>
       </TooltipProvider>
     </aside>

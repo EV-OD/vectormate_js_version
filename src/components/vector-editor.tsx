@@ -5,12 +5,11 @@ import { AppHeader } from '@/components/header';
 import { Toolbar } from '@/components/toolbar';
 import { Canvas } from '@/components/canvas';
 import { RightSidebar } from '@/components/right-sidebar';
-import { type Shape, type Tool, type InteractionState, PolygonShape, type CanvasView, ImageShape, SVGShape } from '@/lib/types';
+import { type Shape, type Tool, type InteractionState, type CanvasView, ImageShape, SVGShape } from '@/lib/types';
 import { exportToSvg, exportToJpeg } from '@/lib/export';
 import { ContextMenu } from './context-menu';
 import { useEditorState } from '@/hooks/use-editor-state';
 import { useKeyboardAndClipboard } from '@/hooks/use-keyboard-and-clipboard';
-import { getHexagonPoints } from '@/lib/geometry';
 import { nanoid } from 'nanoid';
 
 export function VectorEditor() {
@@ -86,48 +85,6 @@ export function VectorEditor() {
       exportToSvg(shapes, width, height, canvasView);
     } else {
       exportToJpeg(shapes, width, height, canvasView);
-    }
-  };
-
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    const propType = e.dataTransfer.getData("application/vectormate-prop");
-    const canvasEl = document.getElementById('vector-canvas');
-    if (!canvasEl) return;
-
-    const canvasRect = canvasEl.getBoundingClientRect();
-    let CTM = (canvasEl as unknown as SVGSVGElement).getScreenCTM();
-    if (!CTM) return;
-    CTM = CTM.inverse();
-
-    let point = (canvasEl as unknown as SVGSVGElement).createSVGPoint();
-    point.x = e.clientX - canvasRect.left;
-    point.y = e.clientY - canvasRect.top;
-    let { x, y } = point.matrixTransform(CTM);
-
-    x = (x - canvasView.pan.x) / canvasView.scale;
-    y = (y - canvasView.pan.y) / canvasView.scale;
-    
-    const addProp = (propShape: Omit<PolygonShape, 'id'>) => {
-        addShape({ id: nanoid(), ...propShape });
-    }
-
-    if (propType === 'star') {
-        addProp({
-            name: 'Star',
-            type: 'polygon',
-            x: x - 50, y: y - 50, width: 100, height: 100, rotation: 0,
-            fill: '#FFD700', opacity: 1, strokeWidth: 0,
-            points: "50,0 61,35 98,35 68,57 79,91 50,70 21,91 32,57 2,35 39,35"
-        });
-    } else if (propType === 'heart') {
-        addProp({
-            name: 'Heart',
-            type: 'polygon',
-            x: x - 50, y: y - 50, width: 100, height: 90, rotation: 0,
-            fill: '#E31B23', opacity: 1, strokeWidth: 0,
-            points: "50,90 20,60 0,35 15,10 40,0 50,15 60,0 85,10 100,35 80,60"
-        });
     }
   };
 
@@ -230,7 +187,7 @@ export function VectorEditor() {
 
 
   return (
-    <div className="flex flex-col h-screen bg-muted/40 font-sans" onDrop={handleDrop} onDragOver={(e) => e.preventDefault()}>
+    <div className="flex flex-col h-screen bg-muted/40 font-sans">
       <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileSelected} />
       <AppHeader onExport={handleExport} canvasView={canvasView} onViewChange={handleViewChange} />
       <div className="flex flex-1 overflow-hidden">
