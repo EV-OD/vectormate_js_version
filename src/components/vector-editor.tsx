@@ -5,7 +5,7 @@ import { AppHeader } from '@/components/header';
 import { Toolbar } from '@/components/toolbar';
 import { Canvas } from '@/components/canvas';
 import { PropertiesPanel } from '@/components/properties-panel';
-import { type Shape, type Tool, type InteractionState } from '@/lib/types';
+import { type Shape, type Tool, type InteractionState, PolygonShape } from '@/lib/types';
 import { exportToSvg, exportToJpeg } from '@/lib/export';
 import { useToast } from '@/hooks/use-toast';
 import { nanoid } from 'nanoid';
@@ -88,11 +88,11 @@ export function VectorEditor() {
   
   const updateShapes = (updatedShapes: Shape[]) => dispatch({ type: 'UPDATE_SHAPES', payload: updatedShapes });
 
-  const deleteSelectedShapes = () => {
+  const deleteSelectedShapes = useCallback(() => {
     if (state.selectedShapeIds.length > 0) {
       dispatch({ type: 'DELETE_SHAPES', payload: state.selectedShapeIds });
     }
-  };
+  }, [state.selectedShapeIds]);
 
   const setSelectedShapeIds = (ids: string[]) => dispatch({ type: 'SET_SELECTED_SHAPES', payload: ids });
 
@@ -117,25 +117,36 @@ export function VectorEditor() {
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     const propType = e.dataTransfer.getData("application/vectormate-prop");
-    const canvasRect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - canvasRect.left;
-    const y = e.clientY - canvasRect.top;
+    const canvasEl = document.getElementById('vector-canvas');
+    if (!canvasEl) return;
+
+    const canvasRect = canvasEl.getBoundingClientRect();
+    const CTM = (canvasEl as unknown as SVGSVGElement).getScreenCTM();
+
+    let x = e.clientX - canvasRect.left;
+    let y = e.clientY - canvasRect.top;
+
+    if (CTM) {
+        x = (e.clientX - CTM.e) / CTM.a;
+        y = (e.clientY - CTM.f) / CTM.d;
+    }
+    
+    const addProp = (propShape: Omit<PolygonShape, 'id'>) => {
+        addShape({ id: nanoid(), ...propShape });
+    }
 
     if (propType === 'star') {
-        addShape({
-            id: nanoid(),
+        addProp({
             type: 'polygon',
             x: x - 50, y: y - 50, width: 100, height: 100, rotation: 0,
             fill: '#FFD700', opacity: 1,
             points: "50,0 61,35 98,35 68,57 79,91 50,70 21,91 32,57 2,35 39,35"
         });
     } else if (propType === 'heart') {
-        addShape({
-            id: nanoid(),
+        addProp({
             type: 'polygon',
             x: x - 50, y: y - 50, width: 100, height: 90, rotation: 0,
             fill: '#E31B23', opacity: 1,
-            // A more complex path for a heart shape
             points: "50,90 20,60 0,35 15,10 40,0 50,15 60,0 85,10 100,35 80,60"
         });
     }
@@ -145,18 +156,28 @@ export function VectorEditor() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.key === 'Backspace' || e.key === 'Delete') && state.selectedShapeIds.length > 0) {
-        deleteSelectedShapes();
+      if ((e.target as HTMLElement).closest('input, textarea, [contenteditable=true]')) {
+        return;
       }
-      if (e.key === 'Escape') {
+
+      if ((e.key === 'Backspace' || e.key === 'Delete')) {
+        deleteSelectedShapes();
+      } else if (e.key === 'Escape') {
         setSelectedShapeIds([]);
         setActiveTool('select');
         setInteractionState({ type: 'none' });
+      } else {
+        switch (e.key.toLowerCase()) {
+          case 'v': setActiveTool('select'); break;
+          case 'r': setActiveTool('rectangle'); break;
+          case 'o': setActiveTool('circle'); break;
+          case 'p': setActiveTool('polygon'); break;
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [state.selectedShapeIds, deleteSelectedShapes]);
+  }, [deleteSelectedShapes]);
 
   return (
     <div className="flex flex-col h-screen bg-muted/40 font-sans" onDrop={handleDrop} onDragOver={(e) => e.preventDefault()}>
@@ -167,6 +188,7 @@ export function VectorEditor() {
           <Canvas
             shapes={state.shapes}
             activeTool={activeTool}
+            setActiveTool={setActiveTool}
             selectedShapeIds={state.selectedShapeIds}
             setSelectedShapeIds={setSelectedShapeIds}
             addShape={addShape}
