@@ -7,7 +7,6 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Slider } from './ui/slider';
 import { Trash2 } from 'lucide-react';
-import { ScrollArea } from './ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
 import { Separator } from './ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -36,23 +35,56 @@ export function RightSidebar({
   const selectedShapes = shapes.filter(s => selectedShapeIds.includes(s.id));
   const shape = selectedShapes[0];
   const multipleSelected = selectedShapes.length > 1;
-  const isSingleRectangle = selectedShapes.length === 1 && shape.type === 'rectangle';
+
+  const isSingleRectangle = selectedShapes.length === 1 && shape?.type === 'rectangle';
+  const showFillAndOpacity = selectedShapes.some(s => s.type !== 'line');
 
   const handlePropertyChange = (prop: keyof Shape, value: any) => {
-    let updatedShapes;
-    if (prop === 'fill' || prop === 'opacity') {
-        updatedShapes = selectedShapes
-            .filter(s => s.type !== 'line')
-            .map(s => ({...s, [prop]: value}));
-    } else if (multipleSelected) {
-        updatedShapes = selectedShapes.map(s => ({...s, [prop]: value}));
-    } else {
-        updatedShapes = [{ ...shape, [prop]: value }];
-    }
-    onShapesUpdate(updatedShapes);
+    const updated = selectedShapes.map(s => {
+      const newShape = { ...s };
+
+      if ((prop === 'fill' || prop === 'opacity') && newShape.type === 'line') {
+        return s;
+      }
+      if (prop === 'borderRadius' && newShape.type !== 'rectangle') {
+        return s;
+      }
+      
+      const numericProps = ['x', 'y', 'width', 'height', 'rotation', 'opacity', 'strokeWidth', 'borderRadius'];
+      if(numericProps.includes(prop as string)) {
+        const numValue = Number(value);
+        if (!isNaN(numValue)) {
+            (newShape as any)[prop] = numValue;
+        }
+      } else {
+        (newShape as any)[prop] = value;
+      }
+      
+      return newShape;
+    });
+
+    onShapesUpdate(updated);
   };
   
-  const showFillAndOpacity = selectedShapes.every(s => s.type !== 'line');
+  const getCommonValue = (prop: keyof Shape): string | number => {
+    if (!shape) return '';
+    const firstValue = (shape as any)[prop];
+    if (multipleSelected) {
+        const allSame = selectedShapes.every(s => (s as any)[prop] === firstValue);
+        if (!allSame) return 'Mixed';
+    }
+    if (typeof firstValue === 'number') return Math.round(firstValue);
+    return firstValue ?? '';
+  }
+
+  const getSliderValue = (prop: keyof Shape, multiplier: number = 1, defaultValue: number = 0): number => {
+      if (!shape) return defaultValue;
+      const firstValue = (shape as any)[prop];
+      if (typeof firstValue === 'number') {
+        return firstValue * multiplier;
+      }
+      return defaultValue;
+  }
 
   return (
     <aside className="w-64 border-l bg-card text-card-foreground flex flex-col">
@@ -81,26 +113,26 @@ export function RightSidebar({
                 <AccordionItem value="transform">
                   <AccordionTrigger>Transform</AccordionTrigger>
                   <AccordionContent>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-2 gap-x-2 gap-y-4">
                       <div>
                         <Label htmlFor="pos-x">X</Label>
-                        <Input id="pos-x" type="number" value={Math.round(shape.x)} onChange={e => handlePropertyChange('x', Number(e.target.value))} disabled={multipleSelected} />
+                        <Input id="pos-x" type="number" value={getCommonValue('x')} onChange={e => handlePropertyChange('x', e.target.value)} disabled={multipleSelected} />
                       </div>
                       <div>
                         <Label htmlFor="pos-y">Y</Label>
-                        <Input id="pos-y" type="number" value={Math.round(shape.y)} onChange={e => handlePropertyChange('y', Number(e.target.value))} disabled={multipleSelected} />
+                        <Input id="pos-y" type="number" value={getCommonValue('y')} onChange={e => handlePropertyChange('y', e.target.value)} disabled={multipleSelected} />
                       </div>
                       <div>
                         <Label htmlFor="width">W</Label>
-                        <Input id="width" type="number" value={Math.round(shape.width)} onChange={e => handlePropertyChange('width', Math.max(0, Number(e.target.value)))} disabled={multipleSelected}/>
+                        <Input id="width" type="number" value={getCommonValue('width')} onChange={e => handlePropertyChange('width', Math.max(0, Number(e.target.value)))} disabled={multipleSelected}/>
                       </div>
                       <div>
                         <Label htmlFor="height">H</Label>
-                        <Input id="height" type="number" value={Math.round(shape.height)} onChange={e => handlePropertyChange('height', Math.max(0, Number(e.target.value)))} disabled={multipleSelected}/>
+                        <Input id="height" type="number" value={getCommonValue('height')} onChange={e => handlePropertyChange('height', Math.max(0, Number(e.target.value)))} disabled={multipleSelected}/>
                       </div>
                       <div className="col-span-2">
                         <Label htmlFor="rotation">Rotate</Label>
-                        <Input id="rotation" type="number" value={Math.round(shape.rotation)} onChange={e => handlePropertyChange('rotation', Number(e.target.value))} disabled={multipleSelected}/>
+                        <Input id="rotation" type="number" value={getCommonValue('rotation')} onChange={e => handlePropertyChange('rotation', e.target.value)} disabled={multipleSelected}/>
                       </div>
                     </div>
                   </AccordionContent>
@@ -115,20 +147,20 @@ export function RightSidebar({
                           <div>
                             <Label>Fill</Label>
                             <div className="flex items-center gap-2">
-                              <Input type="color" value={shape.fill || '#cccccc'} onChange={e => handlePropertyChange('fill', e.target.value)} className="p-1 h-8 w-8" />
-                              <Input type="text" value={shape.fill || '#cccccc'} onChange={e => handlePropertyChange('fill', e.target.value)} />
+                              <Input type="color" value={String(getCommonValue('fill') ?? '#cccccc')} onChange={e => handlePropertyChange('fill', e.target.value)} className="p-1 h-8 w-8" />
+                              <Input type="text" value={String(getCommonValue('fill') ?? '')} onChange={e => handlePropertyChange('fill', e.target.value)} placeholder={getCommonValue('fill') === 'Mixed' ? 'Mixed' : '#cccccc'} />
                             </div>
                           </div>
                           <div>
                             <Label>Opacity</Label>
                             <div className="flex items-center gap-2">
                               <Slider
-                                value={[(shape.opacity || 1) * 100]}
+                                value={[getSliderValue('opacity', 100, 100)]}
                                 onValueChange={([val]) => handlePropertyChange('opacity', val / 100)}
                                 max={100}
                                 step={1}
                               />
-                              <span className="text-sm text-muted-foreground w-12 text-right">{Math.round((shape.opacity || 1) * 100)}%</span>
+                              <span className="text-sm text-muted-foreground w-12 text-right">{getCommonValue('opacity') === 'Mixed' ? 'Mixed' : `${Math.round(getSliderValue('opacity', 100, 100))}%`}</span>
                             </div>
                           </div>
                           <Separator/>
@@ -156,13 +188,13 @@ export function RightSidebar({
                       <div>
                         <Label>Stroke</Label>
                         <div className="flex items-center gap-2">
-                          <Input type="color" value={shape.stroke || '#000000'} onChange={e => handlePropertyChange('stroke', e.target.value)} className="p-1 h-8 w-8" />
-                          <Input type="text" value={shape.stroke || '#000000'} onChange={e => handlePropertyChange('stroke', e.target.value)} />
+                          <Input type="color" value={String(getCommonValue('stroke') ?? '#000000')} onChange={e => handlePropertyChange('stroke', e.target.value)} className="p-1 h-8 w-8" />
+                          <Input type="text" value={String(getCommonValue('stroke') ?? '')} onChange={e => handlePropertyChange('stroke', e.target.value)} placeholder={getCommonValue('stroke') === 'Mixed' ? 'Mixed' : '#000000'} />
                         </div>
                       </div>
                       <div>
                         <Label htmlFor="stroke-width">Stroke Width</Label>
-                        <Input id="stroke-width" type="number" value={Math.round(shape.strokeWidth || 0)} min={0} onChange={e => handlePropertyChange('strokeWidth', Math.max(0, Number(e.target.value)))} />
+                        <Input id="stroke-width" type="number" value={String(getCommonValue('strokeWidth') ?? '0')} min={0} onChange={e => handlePropertyChange('strokeWidth', e.target.value)} />
                       </div>
                     </div>
                   </AccordionContent>
