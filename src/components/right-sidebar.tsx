@@ -64,7 +64,7 @@ export function RightSidebar({
         return s;
       }
       
-      const numericProps = ['x', 'y', 'width', 'height', 'rotation', 'opacity', 'strokeWidth', 'borderRadius'];
+      const numericProps = ['x', 'y', 'width', 'height', 'rotation', 'opacity', 'fillOpacity', 'strokeOpacity', 'strokeWidth', 'borderRadius'];
       if(numericProps.includes(prop as string)) {
         const numValue = Number(value);
         if (!isNaN(numValue)) {
@@ -208,13 +208,26 @@ export function RightSidebar({
                                   <Input type="text" value={String(getCommonValue('fill') ?? '')} onChange={e => handlePropertyChange('fill', e.target.value)} onBlur={onCommit} placeholder={getCommonValue('fill') === 'Mixed' ? 'Mixed' : '#cccccc'} />
                                 </div>
                               </div>
+                              <div>
+                                <Label>Fill Opacity</Label>
+                                <div className="flex items-center gap-2">
+                                  <Slider
+                                    value={[getSliderValue('fillOpacity', 100, 100)]}
+                                    onValueChange={([val]) => handlePropertyChange('fillOpacity', val / 100)}
+                                    onValueCommit={onCommit}
+                                    max={100}
+                                    step={1}
+                                  />
+                                  <span className="text-sm text-muted-foreground w-12 text-right">{getCommonValue('fillOpacity') === 'Mixed' ? 'Mixed' : `${Math.round(getSliderValue('fillOpacity', 100, 100))}%`}</span>
+                                </div>
+                              </div>
                               <Separator/>
                             </>
                           )}
 
                           {showOpacity && (
                              <div>
-                                <Label>Opacity</Label>
+                                <Label>Object Opacity</Label>
                                 <div className="flex items-center gap-2">
                                   <Slider
                                     value={[getSliderValue('opacity', 100, 100)]}
@@ -260,6 +273,19 @@ export function RightSidebar({
                               <div>
                                 <Label htmlFor="stroke-width">Stroke Width</Label>
                                 <Input id="stroke-width" type="number" value={String(getCommonValue('strokeWidth') ?? '0')} min={0} onChange={e => handlePropertyChange('strokeWidth', e.target.value)} onBlur={onCommit} />
+                              </div>
+                              <div>
+                                <Label>Stroke Opacity</Label>
+                                <div className="flex items-center gap-2">
+                                  <Slider
+                                    value={[getSliderValue('strokeOpacity', 100, 100)]}
+                                    onValueChange={([val]) => handlePropertyChange('strokeOpacity', val / 100)}
+                                    onValueCommit={onCommit}
+                                    max={100}
+                                    step={1}
+                                  />
+                                  <span className="text-sm text-muted-foreground w-12 text-right">{getCommonValue('strokeOpacity') === 'Mixed' ? 'Mixed' : `${Math.round(getSliderValue('strokeOpacity', 100, 100))}%`}</span>
+                                </div>
                               </div>
                             </>
                           )}

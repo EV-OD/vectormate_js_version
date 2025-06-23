@@ -12,8 +12,10 @@ export type BaseShape = {
   height: number;
   rotation: number;
   fill?: string;
+  fillOpacity?: number;
   opacity?: number;
   stroke?: string;
+  strokeOpacity?: number;
   strokeWidth?: number;
   borderRadius?: number;
 };

@@ -114,16 +114,21 @@ export function Canvas(props: CanvasProps) {
 
             if (rest.type === 'rectangle' || rest.type === 'circle' || rest.type === 'polygon') {
               commonProps.fill = rest.fill;
+              commonProps.fillOpacity = rest.fillOpacity ?? 1;
               commonProps.stroke = rest.stroke;
+              commonProps.strokeOpacity = rest.strokeOpacity ?? 1;
               commonProps.strokeWidth = rest.strokeWidth;
             } else if (rest.type === 'line') {
               commonProps.fill = "none";
               commonProps.stroke = rest.stroke;
+              commonProps.strokeOpacity = rest.strokeOpacity ?? 1;
               commonProps.strokeWidth = rest.strokeWidth;
             } else if (rest.type === 'path') {
                 const pathShape = rest as PathShape;
                 commonProps.fill = pathShape.fill;
+                commonProps.fillOpacity = pathShape.fillOpacity ?? 1;
                 commonProps.stroke = pathShape.stroke;
+                commonProps.strokeOpacity = pathShape.strokeOpacity ?? 1;
                 commonProps.strokeWidth = pathShape.strokeWidth;
             }
 
