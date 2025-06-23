@@ -5,7 +5,7 @@ import { type Tool } from '@/lib/types';
 import { Button } from './ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import { Separator } from './ui/separator';
-import { MousePointer, Square, Circle, Hexagon, Combine, Diff, Intersect, Exclude, Star, Heart } from 'lucide-react';
+import { MousePointer, Square, Circle, Hexagon, Combine, Diff, Layers, Eclipse, Star, Heart } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type ToolbarProps = {
@@ -25,8 +25,8 @@ const tools: { name: Tool; icon: React.ElementType; tooltip: string }[] = [
 const booleanOps = [
   { name: 'union', icon: Combine, tooltip: 'Union' },
   { name: 'subtract', icon: Diff, tooltip: 'Subtract' },
-  { name: 'intersect', icon: Intersect, tooltip: 'Intersect' },
-  { name: 'exclude', icon: Exclude, tooltip: 'Exclude' },
+  { name: 'intersect', icon: Layers, tooltip: 'Intersect' },
+  { name: 'exclude', icon: Eclipse, tooltip: 'Exclude' },
 ];
 
 const props = [
