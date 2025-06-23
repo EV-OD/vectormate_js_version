@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useReducer, useCallback } from 'react';
@@ -113,7 +112,7 @@ export function useEditorState() {
     dispatch({ type: 'SET_STATE', payload: { updater, commit } });
   }, []);
 
-  const addShape = useCallback((shape: Shape) => {
+  const addShape = useCallback((shape: Shape, commit: boolean = true) => {
     const newShape = { ...shape };
     if (!newShape.name) {
       newShape.name = newShape.type.charAt(0).toUpperCase() + newShape.type.slice(1);
@@ -121,7 +120,7 @@ export function useEditorState() {
     setState(current => ({
       shapes: [...current.shapes, newShape],
       selectedShapeIds: [newShape.id],
-    }), true);
+    }), commit);
   }, [setState]);
 
   const addShapes = useCallback((shapes: Shape[]) => {
@@ -239,7 +238,7 @@ export function useEditorState() {
     }
 
     const selectedShapes = shapes.filter(s => selectedShapeIds.includes(s.id));
-    const compatibleShapes = selectedShapes.filter(s => !['line', 'image', 'svg'].includes(s.type));
+    const compatibleShapes = selectedShapes.filter(s => !['line', 'image', 'svg', 'path'].includes(s.type));
     
     if (compatibleShapes.length < 2) {
         toast({

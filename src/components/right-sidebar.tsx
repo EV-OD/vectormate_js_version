@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { type Shape, RectangleShape, ImageShape, SVGShape, PolygonShape } from '@/lib/types';
+import { type Shape, RectangleShape, ImageShape, SVGShape, PolygonShape, PathShape } from '@/lib/types';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -46,12 +46,14 @@ export function RightSidebar({
   const isSingleRectangle = selectedShapes.length === 1 && shape?.type === 'rectangle';
   const isSingleImage = selectedShapes.length === 1 && shape?.type === 'image';
   const isSingleSvg = selectedShapes.length === 1 && shape?.type === 'svg';
+  const isSinglePath = selectedShapes.length === 1 && shape?.type === 'path';
   
-  const showFillAndStroke = selectedShapes.every(s => !['line', 'image', 'svg'].includes(s.type));
+  const showFill = selectedShapes.every(s => !['line', 'image', 'svg'].includes(s.type));
+  const showStroke = selectedShapes.every(s => !['image', 'svg'].includes(s.type));
   const showOpacity = selectedShapes.every(s => s.type !== 'line');
 
 
-  const handlePropertyChange = (prop: keyof Shape | 'href' | 'svgString', value: any, commit: boolean = false) => {
+  const handlePropertyChange = (prop: keyof Shape | 'href' | 'svgString' | 'd', value: any, commit: boolean = false) => {
     const updated = selectedShapes.map(s => {
       const newShape = { ...s };
 
@@ -66,14 +68,18 @@ export function RightSidebar({
       if(numericProps.includes(prop as string)) {
         const numValue = Number(value);
         if (!isNaN(numValue)) {
-            if ((prop === 'width' || prop === 'height') && newShape.type === 'polygon') {
-                const oldWidth = newShape.width;
-                const oldHeight = newShape.height;
-                const newWidth = prop === 'width' ? numValue : oldWidth;
-                const newHeight = prop === 'height' ? numValue : oldHeight;
+            if ((prop === 'width' || prop === 'height')) {
+                if (newShape.type === 'path') return s; // Disable resizing path from inputs
+                
+                if (newShape.type === 'polygon') {
+                    const oldWidth = newShape.width;
+                    const oldHeight = newShape.height;
+                    const newWidth = prop === 'width' ? numValue : oldWidth;
+                    const newHeight = prop === 'height' ? numValue : oldHeight;
 
-                const originalPoints = (s as PolygonShape).points;
-                (newShape as PolygonShape).points = scalePolygonPoints(originalPoints, oldWidth, oldHeight, newWidth, newHeight);
+                    const originalPoints = (s as PolygonShape).points;
+                    (newShape as PolygonShape).points = scalePolygonPoints(originalPoints, oldWidth, oldHeight, newWidth, newHeight);
+                }
             }
             (newShape as any)[prop] = numValue;
         }
@@ -147,11 +153,11 @@ export function RightSidebar({
                           </div>
                           <div>
                             <Label htmlFor="width">W</Label>
-                            <Input id="width" type="number" value={getCommonValue('width')} onChange={e => handlePropertyChange('width', Math.max(0, Number(e.target.value)))} onBlur={onCommit} disabled={multipleSelected}/>
+                            <Input id="width" type="number" value={getCommonValue('width')} onChange={e => handlePropertyChange('width', Math.max(0, Number(e.target.value)))} onBlur={onCommit} disabled={multipleSelected || isSinglePath}/>
                           </div>
                           <div>
                             <Label htmlFor="height">H</Label>
-                            <Input id="height" type="number" value={getCommonValue('height')} onChange={e => handlePropertyChange('height', Math.max(0, Number(e.target.value)))} onBlur={onCommit} disabled={multipleSelected}/>
+                            <Input id="height" type="number" value={getCommonValue('height')} onChange={e => handlePropertyChange('height', Math.max(0, Number(e.target.value)))} onBlur={onCommit} disabled={multipleSelected || isSinglePath}/>
                           </div>
                           <div className="col-span-2">
                             <Label htmlFor="rotation">Rotate</Label>
@@ -161,7 +167,7 @@ export function RightSidebar({
                       </AccordionContent>
                     </AccordionItem>
                     
-                    {(isSingleImage || isSingleSvg) && (
+                    {(isSingleImage || isSingleSvg || isSinglePath) && (
                       <AccordionItem value="content">
                         <AccordionTrigger>Content</AccordionTrigger>
                         <AccordionContent>
@@ -178,6 +184,12 @@ export function RightSidebar({
                                         <Textarea id="svg-string" value={(shape as SVGShape).svgString || ''} onChange={e => handlePropertyChange('svgString', e.target.value)} onBlur={onCommit} rows={6}/>
                                     </div>
                                 )}
+                                {isSinglePath && (
+                                    <div>
+                                        <Label htmlFor="path-d">Path Data</Label>
+                                        <Textarea id="path-d" value={(shape as PathShape).d || ''} onChange={e => handlePropertyChange('d', e.target.value)} onBlur={onCommit} rows={6}/>
+                                    </div>
+                                )}
                             </div>
                         </AccordionContent>
                       </AccordionItem>
@@ -187,7 +199,7 @@ export function RightSidebar({
                       <AccordionTrigger>Appearance</AccordionTrigger>
                       <AccordionContent>
                         <div className="space-y-4">
-                          {showFillAndStroke && (
+                          {showFill && (
                             <>
                               <div>
                                 <Label>Fill</Label>
@@ -235,7 +247,7 @@ export function RightSidebar({
                             </>
                           )}
                           
-                          {showFillAndStroke && (
+                          {showStroke && (
                             <>
                               <Separator />
                               <div>

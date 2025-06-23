@@ -1,4 +1,4 @@
-import { type Shape, type CanvasView, RectangleShape, ImageShape, SVGShape } from '@/lib/types';
+import { type Shape, type CanvasView, RectangleShape, ImageShape, SVGShape, PathShape } from '@/lib/types';
 
 function shapeToSvgElement(shape: Shape): string {
   const transform = `transform="rotate(${shape.rotation} ${shape.x + shape.width / 2} ${shape.y + shape.height / 2})"`;
@@ -30,6 +30,12 @@ function shapeToSvgElement(shape: Shape): string {
       const svgShape = shape as SVGShape;
       const svgHref = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svgShape.svgString)))}`;
       return `<image href="${svgHref}" x="${svgShape.x}" y="${svgShape.y}" width="${svgShape.width}" height="${svgShape.height}" ${transform} opacity="${svgShape.opacity || 1}" />`;
+    }
+    case 'path': {
+        const pathShape = shape as PathShape;
+        const pathTransform = `translate(${pathShape.x}, ${pathShape.y})`;
+        const common_attrs = `fill="${pathShape.fill || 'none'}" fill-opacity="${pathShape.opacity || 1}" stroke="${pathShape.stroke || 'none'}" stroke-width="${pathShape.strokeWidth || 0}" stroke-linecap="round" stroke-linejoin="round"`;
+        return `<path d="${pathShape.d}" transform="${pathTransform} rotate(${pathShape.rotation} ${pathShape.width / 2} ${pathShape.height / 2})" ${common_attrs} />`;
     }
   }
 }

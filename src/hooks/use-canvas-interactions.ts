@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useRef, useState, useCallback } from 'react';
-import { type Shape, type Tool, type InteractionState, type Handle, PolygonShape, ShapeType, CanvasView, ImageShape, SVGShape } from '@/lib/types';
+import { type Shape, type Tool, type InteractionState, type Handle, PolygonShape, ShapeType, CanvasView, ImageShape, SVGShape, PathShape } from '@/lib/types';
 import { nanoid } from 'nanoid';
 import { getBounds, getHexagonPoints, scalePolygonPoints } from '@/lib/geometry';
 import { SNAP_THRESHOLD } from '@/lib/constants';
@@ -12,7 +12,7 @@ type UseCanvasInteractionsProps = {
   setActiveTool: (tool: Tool) => void;
   selectedShapeIds: string[];
   setSelectedShapeIds: (ids: string[]) => void;
-  addShape: (shape: Shape) => void;
+  addShape: (shape: Shape, commit?: boolean) => void;
   updateShapes: (shapes: Shape[]) => void;
   commitUpdate: () => void;
   interactionState: InteractionState;
@@ -160,6 +160,24 @@ export function useCanvasInteractions({
                 setInteractionState({ type: 'panning', startX: screenPos.x, startY: screenPos.y, initialPan: canvasView.pan });
             }
         }
+    } else if (activeTool === 'brush') {
+        const newShape: PathShape = {
+            id: nanoid(),
+            type: 'path',
+            name: 'Path',
+            x: x,
+            y: y,
+            width: 0,
+            height: 0,
+            rotation: 0,
+            opacity: 1,
+            stroke: '#000000',
+            strokeWidth: 4,
+            fill: 'none',
+            d: `M ${x} ${y}`,
+        };
+        addShape(newShape, false);
+        setInteractionState({ type: 'brushing', currentShapeId: newShape.id, points: [{ x, y }] });
     } else {
         const shapeName = activeTool.charAt(0).toUpperCase() + activeTool.slice(1);
         const commonProps = { id: nanoid(), name: shapeName, x, y, width: 0, height: 0, rotation: 0, opacity: 1 };
@@ -172,7 +190,7 @@ export function useCanvasInteractions({
         } else {
             newShape = { ...commonProps, type: activeTool as 'rectangle' | 'circle', fill: '#cccccc', strokeWidth: 0 };
         }
-      addShape(newShape);
+      addShape(newShape, false);
       setInteractionState({ type: 'drawing', shapeType: activeTool, startX: x, startY: y, currentShapeId: newShape.id });
     }
   }, [getMousePosition, activeTool, selectedShapeIds, shapes, setSelectedShapeIds, getScreenPosition, canvasView.pan, setContextMenu, setInteractionState, addShape]);
@@ -465,11 +483,55 @@ export function useCanvasInteractions({
             setMarquee({ x: newX, y: newY, width, height });
             break;
         }
+        case 'brushing': {
+            const currentShape = shapes.find(s => s.id === interactionState.currentShapeId);
+            if (!currentShape || currentShape.type !== 'path') break;
+
+            const updatedD = currentShape.d + ` L ${x} ${y}`;
+            updateShapes([{ ...currentShape, d: updatedD }]);
+            
+            setInteractionState({
+                ...interactionState,
+                points: [...interactionState.points, { x, y }]
+            });
+            break;
+        }
     }
     setActiveSnapLines(newActiveSnapLines);
-  }, [interactionState, getScreenPosition, onViewChange, getMousePosition, canvasView, shapes, updateShapes, getSnappedCoords, setMarquee, setActiveSnapLines]);
+  }, [interactionState, getScreenPosition, onViewChange, getMousePosition, canvasView, shapes, updateShapes, getSnappedCoords, setMarquee, setActiveSnapLines, setInteractionState]);
 
   const handleMouseUp = useCallback((e: React.MouseEvent) => {
+    if (interactionState.type === 'brushing') {
+        const shape = shapes.find(s => s.id === interactionState.currentShapeId);
+        const points = interactionState.points;
+        if (shape && shape.type === 'path' && points.length > 1) {
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+            points.forEach(p => {
+                minX = Math.min(minX, p.x);
+                minY = Math.min(minY, p.y);
+                maxX = Math.max(maxX, p.x);
+                maxY = Math.max(maxY, p.y);
+            });
+            
+            const relativeD = points.map((p, i) => {
+                const command = i === 0 ? 'M' : 'L';
+                const relX = p.x - minX;
+                const relY = p.y - minY;
+                return `${command} ${relX.toFixed(2)} ${relY.toFixed(2)}`;
+            }).join(' ');
+
+            const finalShape: PathShape = {
+                ...(shape as PathShape),
+                x: minX,
+                y: minY,
+                width: maxX - minX,
+                height: maxY - minY,
+                d: relativeD,
+            };
+            updateShapes([finalShape]);
+        }
+    }
+
     if (interactionState.type === 'marquee' && marquee) {
         const isShapeInMarquee = (shape: Shape, marqueeBox: typeof marquee) => {
             if (!marqueeBox) return false;
@@ -497,7 +559,7 @@ export function useCanvasInteractions({
     setMarquee(null);
     setActiveSnapLines({ vertical: [], horizontal: [] });
 
-    if (['moving', 'resizing', 'rotating', 'drawing'].includes(interactionState.type)) {
+    if (['moving', 'resizing', 'rotating', 'drawing', 'brushing'].includes(interactionState.type)) {
         commitUpdate();
     }
     

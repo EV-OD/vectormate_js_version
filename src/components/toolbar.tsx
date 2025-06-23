@@ -19,7 +19,8 @@ import {
   Star, 
   Heart,
   Image,
-  FileCode
+  FileCode,
+  Brush
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -122,6 +123,22 @@ export function Toolbar({
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant={activeTool === 'brush' ? 'secondary' : 'ghost'}
+                size="icon"
+                onClick={() => onToolSelect('brush')}
+                className={cn(activeTool === 'brush' && 'text-primary ring-2 ring-primary/50')}
+              >
+                <Brush className="w-5 h-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right">
+              <p>Brush (B)</p>
+            </TooltipContent>
+          </Tooltip>
         </div>
 
         <Separator className="my-4" />

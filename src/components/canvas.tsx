@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { type Shape, type Tool, type InteractionState, type Handle, PolygonShape, ShapeType, CanvasView, RectangleShape, ImageShape, SVGShape } from '@/lib/types';
+import { type Shape, type Tool, type InteractionState, type Handle, PolygonShape, ShapeType, CanvasView, RectangleShape, ImageShape, SVGShape, PathShape } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { getBounds, getHexagonPoints } from '@/lib/geometry';
 import { useCanvasInteractions } from '@/hooks/use-canvas-interactions';
@@ -13,7 +13,7 @@ type CanvasProps = {
   setActiveTool: (tool: Tool) => void;
   selectedShapeIds: string[];
   setSelectedShapeIds: (ids: string[]) => void;
-  addShape: (shape: Shape) => void;
+  addShape: (shape: Shape, commit?: boolean) => void;
   updateShapes: (shapes: Shape[]) => void;
   commitUpdate: () => void;
   interactionState: InteractionState;
@@ -120,6 +120,11 @@ export function Canvas(props: CanvasProps) {
               commonProps.fill = "none";
               commonProps.stroke = rest.stroke;
               commonProps.strokeWidth = rest.strokeWidth;
+            } else if (rest.type === 'path') {
+                const pathShape = rest as PathShape;
+                commonProps.fill = pathShape.fill;
+                commonProps.stroke = pathShape.stroke;
+                commonProps.strokeWidth = pathShape.strokeWidth;
             }
 
 
@@ -144,6 +149,20 @@ export function Canvas(props: CanvasProps) {
                 const { svgString } = rest as SVGShape;
                 const svgHref = `data:image/svg+xml;base64,${typeof window !== 'undefined' ? window.btoa(unescape(encodeURIComponent(svgString))) : ''}`;
                 return <image key={rest.id} href={svgHref} x={rest.x} y={rest.y} width={rest.width} height={rest.height} {...commonProps} />;
+              }
+              case 'path': {
+                  const pathShape = rest as PathShape;
+                  const { transform: pathTransform, ...pathProps } = commonProps;
+                  pathProps.strokeLinecap = "round";
+                  pathProps.strokeLinejoin = "round";
+                  return (
+                    <path
+                        key={rest.id}
+                        d={pathShape.d}
+                        transform={`translate(${rest.x} ${rest.y}) ${pathTransform}`}
+                        {...pathProps}
+                    />
+                  );
               }
             }
           })}

@@ -89,6 +89,7 @@ export function useKeyboardAndClipboard({
             case 'o': setActiveTool('circle'); break;
             case 'p': setActiveTool('polygon'); break;
             case 'l': setActiveTool('line'); break;
+            case 'b': setActiveTool('brush'); break;
           }
         }
       };
