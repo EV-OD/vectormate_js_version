@@ -37,12 +37,16 @@ export function CropDialog({ shape, onClose, onSave }: CropDialogProps) {
   };
 
   const handleSave = () => {
-    if (crop) {
+    if (crop && imgRef.current) {
+      const img = imgRef.current;
+      // Scale crop coordinates from display size to natural size
+      const scaleX = img.naturalWidth / img.width;
+      const scaleY = img.naturalHeight / img.height;
       onSave({
-        x: crop.x,
-        y: crop.y,
-        width: crop.width,
-        height: crop.height,
+        x: crop.x * scaleX,
+        y: crop.y * scaleY,
+        width: crop.width * scaleX,
+        height: crop.height * scaleY,
       });
     }
   };

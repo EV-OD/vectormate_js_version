@@ -135,7 +135,7 @@ export function VectorEditor() {
         
         const previewCanvas = document.createElement('canvas');
         const PREVIEW_WIDTH = 50;
-        const aspectRatio = crop.height / crop.width;
+        const aspectRatio = crop.width > 0 ? crop.height / crop.width : 1;
         previewCanvas.width = PREVIEW_WIDTH;
         previewCanvas.height = PREVIEW_WIDTH * aspectRatio;
         const previewCtx = previewCanvas.getContext('2d');
@@ -149,8 +149,6 @@ export function VectorEditor() {
             originalHref: imageSrc,
             width: crop.width,
             height: crop.height,
-            originalWidth: crop.width,
-            originalHeight: crop.height,
         };
         
         updateShapes([updatedShape]);
