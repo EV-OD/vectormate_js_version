@@ -162,15 +162,10 @@ export function useCanvasInteractions({
             setDraftShapes(movingShapes);
             setInteractionState({ type: 'moving', startX: x, startY: y, initialShapes: movingShapes });
         } else { // Background click
-            if (e.ctrlKey || e.metaKey) {
-                setInteractionState({ type: 'marquee', startX: x, startY: y });
-            } else {
-                if (!e.shiftKey) { 
-                    setSelectedShapeIds([]);
-                }
-                const screenPos = getScreenPosition(e);
-                setInteractionState({ type: 'panning', startX: screenPos.x, startY: screenPos.y, initialPan: canvasView.pan });
+            if (!e.shiftKey) {
+                setSelectedShapeIds([]);
             }
+            setInteractionState({ type: 'marquee', startX: x, startY: y });
         }
     } else if (activeTool === 'brush') {
         const newShape: PathShape = {
