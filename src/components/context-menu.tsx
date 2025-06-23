@@ -16,6 +16,7 @@ import {
   ArrowDownToLine,
   Crop,
   Scissors,
+  Unlink,
 } from 'lucide-react';
 
 type ContextMenuProps = {
@@ -32,6 +33,8 @@ type ContextMenuProps = {
   canCrop: boolean;
   onCreateClippingMask: () => void;
   canCreateClippingMask: boolean;
+  onReleaseMask: () => void;
+  canReleaseMask: boolean;
 };
 
 export function ContextMenu({
@@ -48,6 +51,8 @@ export function ContextMenu({
   canCrop,
   onCreateClippingMask,
   canCreateClippingMask,
+  onReleaseMask,
+  canReleaseMask
 }: ContextMenuProps) {
   return (
     <DropdownMenu open={true} onOpenChange={(open) => !open && onClose()}>
@@ -73,10 +78,17 @@ export function ContextMenu({
           <span>Paste</span>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={onCreateClippingMask} disabled={!canCreateClippingMask}>
-          <Scissors className="mr-2" />
-          <span>Create Clipping Mask</span>
-        </DropdownMenuItem>
+        {canReleaseMask ? (
+            <DropdownMenuItem onClick={onReleaseMask}>
+                <Unlink className="mr-2" />
+                <span>Release Clipping Mask</span>
+            </DropdownMenuItem>
+        ) : (
+            <DropdownMenuItem onClick={onCreateClippingMask} disabled={!canCreateClippingMask}>
+                <Scissors className="mr-2" />
+                <span>Create Clipping Mask</span>
+            </DropdownMenuItem>
+        )}
         <DropdownMenuItem onClick={onBringToFront}>
           <ArrowUpToLine className="mr-2" />
           <span>Bring to Front</span>

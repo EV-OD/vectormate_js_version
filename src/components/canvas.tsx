@@ -22,6 +22,7 @@ type CanvasProps = {
   setContextMenu: (menu: { x: number; y: number; shapeId: string } | null) => void;
   canvasView: CanvasView;
   onViewChange: (view: Partial<CanvasView>) => void;
+  isolationMode: string | null;
 };
 
 export function Canvas(props: CanvasProps) {

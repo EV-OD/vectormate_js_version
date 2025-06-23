@@ -29,6 +29,7 @@ export function VectorEditor() {
     reorderShapes,
     renameShape,
     createClippingMask,
+    releaseClippingMask,
     undo,
     redo,
     canUndo,
@@ -39,6 +40,7 @@ export function VectorEditor() {
   const [interactionState, setInteractionState] = useState<InteractionState>({ type: 'none' });
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; shapeId: string } | null>(null);
   const [croppingImageId, setCroppingImageId] = useState<string | null>(null);
+  const [isolationMode, setIsolationMode] = useState<string | null>(null);
   
   const [canvasView, setCanvasView] = useState<CanvasView>({
     background: 'grid',
@@ -98,16 +100,38 @@ export function VectorEditor() {
     }
   };
 
-  const handleSelectShapeInLayerPanel = (id: string, shiftKey: boolean) => {
-    if (shiftKey) {
-      setSelectedShapeIds(prevIds => 
-        prevIds.includes(id) 
-          ? prevIds.filter(i => i !== id) 
-          : [...prevIds, id]
-      );
-    } else {
-      setSelectedShapeIds([id]);
+  const handleSelectShape = (id: string, shiftKey: boolean) => {
+    if (isolationMode) {
+        const clickedShape = shapes.find(s => s.id === id);
+        if (clickedShape?.groupId !== isolationMode) return;
+
+        setSelectedShapeIds(prevIds => 
+            shiftKey 
+                ? (prevIds.includes(id) ? prevIds.filter(i => i !== id) : [...prevIds, id])
+                : [id]
+        );
+        return;
     }
+
+    const clickedShape = shapes.find(s => s.id === id);
+    const groupId = clickedShape?.groupId;
+    
+    let idsToSelect: string[] = [id];
+    if (groupId) {
+        idsToSelect = shapes.filter(s => s.groupId === groupId).map(s => s.id);
+    }
+
+    setSelectedShapeIds(prevIds => {
+        if (!shiftKey) {
+            return idsToSelect;
+        }
+        const isGroupSelected = idsToSelect.every(id => prevIds.includes(id));
+        if (isGroupSelected) {
+            return prevIds.filter(prevId => !idsToSelect.includes(prevId));
+        } else {
+            return [...new Set([...prevIds, ...idsToSelect])];
+        }
+    });
   };
   
   const handleShapesUpdate = useCallback((updatedShapes: Shape[], shouldCommit: boolean = false) => {
@@ -147,7 +171,6 @@ export function VectorEditor() {
             ...croppingShape,
             href: newHref,
             lowQualityHref,
-            originalHref: imageSrc,
             width: crop.width,
             height: crop.height,
         };
@@ -164,7 +187,9 @@ export function VectorEditor() {
   };
 
   const isSingleImageSelected = selectedShapes.length === 1 && selectedShapes[0].type === 'image';
-  const canCreateClippingMask = selectedShapeIds.length === 2;
+  const canCreateClippingMask = selectedShapeIds.length === 2 && !selectedShapes.some(s => s.groupId);
+  const canReleaseMask = selectedShapes.length > 0 && !!selectedShapes[0].groupId;
+
 
   return (
     <div className="flex flex-col h-screen bg-muted/40 font-sans">
@@ -191,6 +216,7 @@ export function VectorEditor() {
             setContextMenu={setContextMenu}
             canvasView={canvasView}
             onViewChange={handleViewChange}
+            isolationMode={isolationMode}
           />
         </main>
         <RightSidebar
@@ -198,7 +224,7 @@ export function VectorEditor() {
           selectedShapeIds={selectedShapeIds}
           onShapesUpdate={handleShapesUpdate}
           onCommit={commit}
-          onSelectShape={handleSelectShapeInLayerPanel}
+          onSelectShape={handleSelectShape}
           onDelete={deleteSelectedShapes}
           onDuplicate={duplicateSelectedShapes}
           onReorder={reorderShapes}
@@ -222,6 +248,8 @@ export function VectorEditor() {
           onCrop={() => setCroppingImageId(selectedShapeIds[0])}
           canCreateClippingMask={canCreateClippingMask}
           onCreateClippingMask={createClippingMask}
+          canReleaseMask={canReleaseMask}
+          onReleaseMask={() => releaseClippingMask(selectedShapes[0]?.id)}
         />
       )}
       {croppingShape && (

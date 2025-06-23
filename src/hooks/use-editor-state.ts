@@ -153,18 +153,31 @@ export function useEditorState() {
   const deleteShapesByIds = useCallback((ids: string[]) => {
     if (ids.length > 0) {
       setState(current => {
-        const shapesToDelete = current.shapes.filter(s => ids.includes(s.id));
+        let allIdsToDelete = [...ids];
+        const groupIdsToDelete = new Set<string>();
+
+        ids.forEach(id => {
+            const shape = current.shapes.find(s => s.id === id);
+            if (shape?.groupId) {
+                groupIdsToDelete.add(shape.groupId);
+            }
+        });
+
+        groupIdsToDelete.forEach(groupId => {
+            current.shapes.forEach(shape => {
+                if (shape.groupId === groupId) {
+                    allIdsToDelete.push(shape.id);
+                }
+            });
+        });
+        
+        const uniqueIdsToDelete = [...new Set(allIdsToDelete)];
+
+        const shapesToDelete = current.shapes.filter(s => uniqueIdsToDelete.includes(s.id));
         const maskIdsToDelete = new Set(shapesToDelete.filter(s => s.isClippingMask).map(s => s.id));
 
-        if (maskIdsToDelete.size === 0) {
-            return {
-                shapes: current.shapes.filter(s => !ids.includes(s.id)),
-                selectedShapeIds: [],
-            };
-        }
-
         const newShapes = current.shapes
-            .filter(s => !ids.includes(s.id))
+            .filter(s => !uniqueIdsToDelete.includes(s.id))
             .map(s => {
                 if (s.clippedBy && maskIdsToDelete.has(s.clippedBy)) {
                     const { clippedBy, ...rest } = s;
@@ -223,6 +236,12 @@ export function useEditorState() {
   
   const reorderShapes = useCallback((fromId: string, toId: string, position: 'top' | 'bottom') => {
     setState(current => {
+        const fromShape = current.shapes.find(s => s.id === fromId);
+        if (fromShape?.groupId) {
+             toast({ title: "Reorder Info", description: "Cannot reorder part of a clipping group.", variant: "default" });
+            return {};
+        }
+
         const reversedShapes = [...current.shapes].reverse();
         const fromIndex = reversedShapes.findIndex(s => s.id === fromId);
         let toIndex = reversedShapes.findIndex(s => s.id === toId);
@@ -238,7 +257,7 @@ export function useEditorState() {
         }
         return { shapes: reversedShapes.reverse() };
     }, true);
-  }, [setState]);
+  }, [setState, toast]);
   
   const renameShape = useCallback((id: string, name: string) => {
     setState(current => ({
@@ -325,24 +344,28 @@ export function useEditorState() {
         const maskShape = current.shapes[topIndex];
         const contentShape = current.shapes[bottomIndex];
 
-        if (maskShape.isClippingMask || contentShape.clippedBy) {
-            toast({ title: "Invalid Operation", description: "Cannot clip a mask or an already clipped shape.", variant: "destructive" });
+        if (maskShape.isClippingMask || contentShape.clippedBy || maskShape.groupId || contentShape.groupId) {
+            toast({ title: "Invalid Operation", description: "Cannot clip a mask, an already clipped shape, or a shape in a group.", variant: "destructive" });
             return current;
         }
+        
+        const groupId = nanoid();
 
         const updatedMask = {
             ...maskShape,
             isClippingMask: true,
             fill: 'none',
             stroke: 'hsl(var(--accent))',
-            strokeWidth: 1 / state.present.shapes.length, // Scale stroke for visibility
-            strokeDasharray: '5 5',
+            strokeWidth: 1,
+            strokeDasharray: '4 4',
             opacity: 1,
+            groupId,
         };
 
         const updatedContent = {
             ...contentShape,
             clippedBy: maskShape.id,
+            groupId,
         };
 
         const newShapes = current.shapes.map(s => {
@@ -353,10 +376,38 @@ export function useEditorState() {
 
         return {
             shapes: newShapes,
-            selectedShapeIds: [contentShape.id],
+            selectedShapeIds: [contentShape.id, maskShape.id],
         };
     }, true);
-  }, [setState, toast, state.present.shapes.length]);
+  }, [setState, toast]);
+
+  const releaseClippingMask = useCallback((shapeId: string) => {
+    setState(current => {
+        const shape = current.shapes.find(s => s.id === shapeId);
+        if (!shape || !shape.groupId) return current;
+
+        const groupShapes = current.shapes.filter(s => s.groupId === shape.groupId);
+        const maskShape = groupShapes.find(s => s.isClippingMask);
+        
+        const newShapes = current.shapes.map(s => {
+            if (s.groupId === shape.groupId) {
+                const { groupId, isClippingMask, clippedBy, strokeDasharray, ...rest } = s;
+                if(maskShape && s.id === maskShape.id) {
+                    return { ...rest, fill: maskShape.fill || '#cccccc', stroke: maskShape.stroke || 'none', strokeWidth: maskShape.strokeWidth || 0 } as Shape;
+                }
+                return rest as Shape;
+            }
+            return s;
+        });
+        
+        const groupShapeIds = groupShapes.map(s => s.id);
+
+        return {
+            shapes: newShapes,
+            selectedShapeIds: groupShapeIds,
+        };
+    }, true);
+  }, [setState]);
   
   return {
     shapes: state.present.shapes,
@@ -374,6 +425,7 @@ export function useEditorState() {
     reorderShapes,
     renameShape,
     createClippingMask,
+    releaseClippingMask,
     undo,
     redo,
     canUndo,

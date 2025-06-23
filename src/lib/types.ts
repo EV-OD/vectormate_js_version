@@ -21,6 +21,7 @@ export type BaseShape = {
   isClippingMask?: boolean;
   clippedBy?: string;
   strokeDasharray?: string;
+  groupId?: string;
 };
 
 export interface RectangleShape extends BaseShape {

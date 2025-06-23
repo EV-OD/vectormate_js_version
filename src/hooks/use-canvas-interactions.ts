@@ -20,6 +20,7 @@ type UseCanvasInteractionsProps = {
   setContextMenu: (menu: { x: number; y: number; shapeId: string } | null) => void;
   canvasView: CanvasView;
   onViewChange: (view: Partial<CanvasView>) => void;
+  isolationMode: string | null;
 };
 
 export function useCanvasInteractions({
@@ -36,6 +37,7 @@ export function useCanvasInteractions({
   setContextMenu,
   canvasView,
   onViewChange,
+  isolationMode,
 }: UseCanvasInteractionsProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [activeSnapLines, setActiveSnapLines] = useState<{ vertical: number[], horizontal: number[] }>({ vertical: [], horizontal: [] });
@@ -158,19 +160,40 @@ export function useCanvasInteractions({
         } else {
             const shapeId = target.dataset.shapeId;
             if (shapeId && shapeId !== 'background') {
-                const isSelected = selectedShapeIds.includes(shapeId);
-                if (e.ctrlKey) {
-                    setInteractionState({ type: 'marquee', startX: x, startY: y });
-                    return;
-                }
-                const newSelectedIds = e.shiftKey
-                    ? (isSelected ? selectedShapeIds.filter(id => id !== shapeId) : [...selectedShapeIds, shapeId])
-                    : (!isSelected ? [shapeId] : selectedShapeIds);
+                const clickedShape = shapes.find(s => s.id === shapeId);
+                if (!clickedShape) return;
 
-                setSelectedShapeIds(newSelectedIds);
-                const movingShapes = shapes.filter(s => newSelectedIds.includes(s.id));
-                setDraftShapes(movingShapes);
-                setInteractionState({ type: 'moving', startX: x, startY: y, initialShapes: movingShapes });
+                if (isolationMode) {
+                    if (clickedShape.groupId !== isolationMode) {
+                        setSelectedShapeIds([]);
+                        return;
+                    }
+                    const isSelected = selectedShapeIds.includes(shapeId);
+                    const newSelectedIds = e.shiftKey
+                        ? (isSelected ? selectedShapeIds.filter(id => id !== shapeId) : [...selectedShapeIds, shapeId])
+                        : [shapeId];
+
+                    setSelectedShapeIds(newSelectedIds);
+                    const movingShapes = shapes.filter(s => newSelectedIds.includes(s.id));
+                    setDraftShapes(movingShapes);
+                    setInteractionState({ type: 'moving', startX: x, startY: y, initialShapes: movingShapes });
+
+                } else {
+                    const groupId = clickedShape.groupId;
+                    let idsToSelect = groupId ? shapes.filter(s => s.groupId === groupId).map(s => s.id) : [shapeId];
+                    const isGroupSelected = idsToSelect.every(id => selectedShapeIds.includes(id)) && idsToSelect.length === selectedShapeIds.length;
+
+                    const newSelectedIds = e.shiftKey
+                        ? (isGroupSelected 
+                            ? selectedShapeIds.filter(id => !idsToSelect.includes(id)) 
+                            : [...new Set([...selectedShapeIds, ...idsToSelect])])
+                        : (isGroupSelected ? selectedShapeIds : idsToSelect);
+
+                    setSelectedShapeIds(newSelectedIds);
+                    const movingShapes = shapes.filter(s => newSelectedIds.includes(s.id));
+                    setDraftShapes(movingShapes);
+                    setInteractionState({ type: 'moving', startX: x, startY: y, initialShapes: movingShapes });
+                }
             } else { // Background click
                 if (!e.ctrlKey) {
                     setSelectedShapeIds([]);
@@ -270,7 +293,7 @@ export function useCanvasInteractions({
       setDraftShapes([newShape]);
       setInteractionState({ type: 'drawing', shapeType: activeTool, startX: x, startY: y, currentShapeId: newShape.id });
     }
-  }, [getMousePosition, activeTool, shapes, selectedShapeIds, canvasView, getScreenPosition, setContextMenu, setInteractionState, setSelectedShapeIds, addShape, setActiveTool]);
+  }, [getMousePosition, activeTool, shapes, selectedShapeIds, canvasView, getScreenPosition, setContextMenu, setInteractionState, setSelectedShapeIds, addShape, setActiveTool, isolationMode]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (interactionState.type === 'none') return;
@@ -731,7 +754,12 @@ export function useCanvasInteractions({
 
     if (shapeId && shapeId !== 'background') {
         if (!selectedShapeIds.includes(shapeId)) {
-            setSelectedShapeIds([shapeId]);
+            const clickedShape = shapes.find(s => s.id === shapeId);
+            if (clickedShape?.groupId) {
+                 setSelectedShapeIds(shapes.filter(s => s.groupId === clickedShape.groupId).map(s => s.id));
+            } else {
+                setSelectedShapeIds([shapeId]);
+            }
         }
         setContextMenu({
             x: e.clientX,
@@ -741,7 +769,7 @@ export function useCanvasInteractions({
     } else {
         setContextMenu(null);
     }
-  }, [selectedShapeIds, setSelectedShapeIds, setContextMenu]);
+  }, [shapes, selectedShapeIds, setSelectedShapeIds, setContextMenu]);
   
   const handleWheel = useCallback((e: React.WheelEvent) => {
     if ((e.target as HTMLElement).closest('aside, header')) {
