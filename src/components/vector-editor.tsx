@@ -100,10 +100,12 @@ export function VectorEditor() {
     }
   };
 
-  const handleSelectShape = (id: string, shiftKey: boolean) => {
+  const handleSelectShape = useCallback((id: string, shiftKey: boolean) => {
+    const clickedShape = shapes.find(s => s.id === id);
+    if (!clickedShape) return;
+
     if (isolationMode) {
-        const clickedShape = shapes.find(s => s.id === id);
-        if (clickedShape?.groupId !== isolationMode) return;
+        if (clickedShape.groupId !== isolationMode) return;
 
         setSelectedShapeIds(prevIds => 
             shiftKey 
@@ -113,13 +115,8 @@ export function VectorEditor() {
         return;
     }
 
-    const clickedShape = shapes.find(s => s.id === id);
-    const groupId = clickedShape?.groupId;
-    
-    let idsToSelect: string[] = [id];
-    if (groupId) {
-        idsToSelect = shapes.filter(s => s.groupId === groupId).map(s => s.id);
-    }
+    const groupId = clickedShape.groupId;
+    const idsToSelect = groupId ? shapes.filter(s => s.groupId === groupId).map(s => s.id) : [id];
 
     setSelectedShapeIds(prevIds => {
         if (!shiftKey) {
@@ -132,7 +129,7 @@ export function VectorEditor() {
             return [...new Set([...prevIds, ...idsToSelect])];
         }
     });
-  };
+  }, [shapes, isolationMode, setSelectedShapeIds]);
   
   const handleShapesUpdate = useCallback((updatedShapes: Shape[], shouldCommit: boolean = false) => {
     updateShapes(updatedShapes);
@@ -173,6 +170,9 @@ export function VectorEditor() {
             lowQualityHref,
             width: crop.width,
             height: crop.height,
+            originalHref: croppingShape.originalHref || croppingShape.href,
+            originalWidth: croppingShape.originalWidth,
+            originalHeight: croppingShape.originalHeight,
         };
         
         updateShapes([updatedShape]);
@@ -231,6 +231,9 @@ export function VectorEditor() {
           onExportSelection={handleExportSelection}
           onRename={renameShape}
           setInteractionState={setInteractionState}
+          isolationMode={isolationMode}
+          setIsolationMode={setIsolationMode}
+          onReleaseMask={releaseClippingMask}
         />
       </div>
       {contextMenu && (

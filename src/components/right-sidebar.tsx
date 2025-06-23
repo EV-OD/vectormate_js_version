@@ -34,6 +34,9 @@ type RightSidebarProps = {
   onRename: (id: string, name: string) => void;
   onExportSelection: (format: 'svg' | 'jpeg') => void;
   setInteractionState: (state: InteractionState) => void;
+  isolationMode: string | null;
+  setIsolationMode: (id: string | null) => void;
+  onReleaseMask: (shapeId: string) => void;
 };
 
 export function RightSidebar({ 
@@ -48,6 +51,9 @@ export function RightSidebar({
   onRename,
   onExportSelection,
   setInteractionState,
+  isolationMode,
+  setIsolationMode,
+  onReleaseMask,
 }: RightSidebarProps) {
   
   const selectedShapes = shapes.filter(s => selectedShapeIds.includes(s.id));
@@ -208,7 +214,7 @@ export function RightSidebar({
               ) : (
                 <>
                   <div className="flex items-center justify-between gap-2">
-                    <h2 className="text-lg font-semibold font-headline truncate max-w-[100px]">
+                    <h2 className="flex-1 min-w-0 truncate text-lg font-semibold font-headline">
                       {multipleSelected ? `${selectedShapes.length} items` : (shape.name || shape.type.charAt(0).toUpperCase() + shape.type.slice(1))}
                     </h2>
                     <div className="flex items-center gap-1 flex-shrink-0">
@@ -452,6 +458,9 @@ export function RightSidebar({
             onDuplicate={onDuplicate}
             onReorder={onReorder}
             onRename={onRename}
+            isolationMode={isolationMode}
+            setIsolationMode={setIsolationMode}
+            onReleaseMask={onReleaseMask}
           />
         </TabsContent>
       </Tabs>
