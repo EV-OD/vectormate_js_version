@@ -222,7 +222,7 @@ export function Canvas(props: CanvasProps) {
                                 href={href}
                                 width={imageShape.originalWidth}
                                 height={imageShape.originalHeight}
-                                style={{ imageRendering }}
+                                style={{ imageRendering, pointerEvents: 'none' }}
                             />
                         </svg>
                     );
