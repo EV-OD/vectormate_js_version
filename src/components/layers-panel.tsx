@@ -197,10 +197,13 @@ export function LayersPanel({
                     ) : (
                         <span className="truncate text-sm flex-1" onDoubleClick={() => handleRenameStart(item.mask)}>{item.mask.name || 'Clipping Mask'}</span>
                     )}
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); setIsolationMode(isIsolated ? null : item.groupId); }}>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100" onClick={(e) => { e.stopPropagation(); handleRenameStart(item.mask); }}>
+                        <Pencil className="w-3 h-3" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100" onClick={(e) => { e.stopPropagation(); setIsolationMode(isIsolated ? null : item.groupId); }}>
                         {isIsolated ? <EyeOff className="w-4 h-4 text-primary" /> : <Eye className="w-4 h-4" />}
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); onReleaseMask(item.mask.id); }}>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100" onClick={(e) => { e.stopPropagation(); onReleaseMask(item.mask.id); }}>
                         <Unlink className="w-4 h-4" />
                     </Button>
                 </div>
