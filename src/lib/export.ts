@@ -1,4 +1,5 @@
 import { type Shape, type CanvasView, RectangleShape, ImageShape, SVGShape, PathShape } from '@/lib/types';
+import { getBounds } from './geometry';
 
 function shapeToSvgElement(shape: Shape): string {
   const transform = `transform="rotate(${shape.rotation} ${shape.x + shape.width / 2} ${shape.y + shape.height / 2})"`;
@@ -84,6 +85,61 @@ export function exportToJpeg(shapes: Shape[], width: number, height: number, vie
     URL.revokeObjectURL(svgUrl);
   }
   img.src = svgUrl;
+}
+
+export function exportSelectionToSvg(shapes: Shape[]) {
+  if (shapes.length === 0) return;
+
+  const bounds = getBounds(shapes);
+  
+  const svgContent = `<svg width="${bounds.width}" height="${bounds.height}" viewBox="0 0 ${bounds.width} ${bounds.height}" xmlns="http://www.w3.org/2000/svg">
+  <rect width="100%" height="100%" fill="transparent" />
+  <g transform="translate(${-bounds.x}, ${-bounds.y})">
+    ${shapes.map(shapeToSvgElement).join('\n  ')}
+  </g>
+</svg>`;
+
+  const blob = new Blob([svgContent], { type: 'image/svg+xml' });
+  const url = URL.createObjectURL(blob);
+  triggerDownload(url, 'selection.svg');
+}
+
+export function exportSelectionToJpeg(shapes: Shape[]) {
+    if (shapes.length === 0) return;
+
+    const bounds = getBounds(shapes);
+    const width = bounds.width;
+    const height = bounds.height;
+
+    const svgContent = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
+    <rect width="100%" height="100%" fill="hsl(var(--background))" />
+    <g transform="translate(${-bounds.x}, ${-bounds.y})">
+        ${shapes.map(shapeToSvgElement).join('\n  ')}
+    </g>
+    </svg>`;
+    const svgBlob = new Blob([svgContent], { type: 'image/svg+xml;charset=utf-8' });
+    const svgUrl = URL.createObjectURL(svgBlob);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    
+    const img = new Image();
+    img.onload = () => {
+        ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--background').trim();
+        ctx.fillRect(0, 0, width, height);
+        ctx.drawImage(img, 0, 0);
+        URL.revokeObjectURL(svgUrl);
+        const jpegUrl = canvas.toDataURL('image/jpeg');
+        triggerDownload(jpegUrl, 'selection.jpg');
+    };
+    img.onerror = (e) => {
+        console.error("Failed to load SVG image for JPEG conversion", e);
+        URL.revokeObjectURL(svgUrl);
+    }
+    img.src = svgUrl;
 }
 
 function triggerDownload(url: string, filename: string) {

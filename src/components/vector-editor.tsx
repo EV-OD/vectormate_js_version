@@ -6,7 +6,7 @@ import { Toolbar } from '@/components/toolbar';
 import { Canvas } from '@/components/canvas';
 import { RightSidebar } from '@/components/right-sidebar';
 import { type Shape, type Tool, type InteractionState, type CanvasView, ImageShape, SVGShape } from '@/lib/types';
-import { exportToSvg, exportToJpeg } from '@/lib/export';
+import { exportToSvg, exportToJpeg, exportSelectionToSvg, exportSelectionToJpeg } from '@/lib/export';
 import { ContextMenu } from './context-menu';
 import { useEditorState } from '@/hooks/use-editor-state';
 import { useKeyboardAndClipboard } from '@/hooks/use-keyboard-and-clipboard';
@@ -86,6 +86,16 @@ export function VectorEditor() {
       exportToSvg(shapes, width, height, canvasView);
     } else {
       exportToJpeg(shapes, width, height, canvasView);
+    }
+  };
+  
+  const handleExportSelection = (format: 'svg' | 'jpeg') => {
+    if (selectedShapes.length === 0) return;
+
+    if (format === 'svg') {
+        exportSelectionToSvg(selectedShapes);
+    } else {
+        exportSelectionToJpeg(selectedShapes);
     }
   };
 
@@ -226,6 +236,7 @@ export function VectorEditor() {
           onDelete={deleteSelectedShapes}
           onDuplicate={duplicateSelectedShapes}
           onReorder={reorderShapes}
+          onExportSelection={handleExportSelection}
           onRename={renameShape}
         />
       </div>

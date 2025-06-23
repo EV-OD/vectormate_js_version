@@ -6,7 +6,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Slider } from './ui/slider';
-import { Trash2 } from 'lucide-react';
+import { Download, Trash2 } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
 import { Separator } from './ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -14,6 +14,12 @@ import { LayersPanel } from './layers-panel';
 import { ScrollArea } from './ui/scroll-area';
 import { Textarea } from './ui/textarea';
 import { scalePolygonPoints, scalePathData } from '@/lib/geometry';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 type RightSidebarProps = {
   shapes: Shape[];
@@ -25,6 +31,7 @@ type RightSidebarProps = {
   onDuplicate: () => void;
   onReorder: (fromId: string, toId: string, position: 'top' | 'bottom') => void;
   onRename: (id: string, name: string) => void;
+  onExportSelection: (format: 'svg' | 'jpeg') => void;
 };
 
 export function RightSidebar({ 
@@ -37,6 +44,7 @@ export function RightSidebar({
   onDuplicate, 
   onReorder,
   onRename,
+  onExportSelection,
 }: RightSidebarProps) {
   
   const selectedShapes = shapes.filter(s => selectedShapeIds.includes(s.id));
@@ -134,9 +142,26 @@ export function RightSidebar({
                     <h2 className="text-lg font-semibold font-headline">
                       {multipleSelected ? `${selectedShapes.length} items` : (shape.name || shape.type.charAt(0).toUpperCase() + shape.type.slice(1))}
                     </h2>
-                    <Button variant="ghost" size="icon" onClick={onDelete}>
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <Download className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => onExportSelection('svg')}>
+                              Export as SVG
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => onExportSelection('jpeg')}>
+                              Export as JPEG
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      <Button variant="ghost" size="icon" onClick={onDelete}>
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
 
                   <Accordion type="multiple" defaultValue={['transform', 'content', 'appearance']} className="w-full">
