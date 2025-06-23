@@ -7,8 +7,7 @@ import { useToast } from './use-toast';
 type useKeyboardAndClipboardProps = {
     selectedShapes: Shape[];
     canvasViewScale: number;
-    addShape: (shape: Shape) => void;
-    setSelectedShapeIds: (ids: string[]) => void;
+    addShapes: (shapes: Shape[]) => void;
     deleteSelectedShapes: () => void;
     setActiveTool: (tool: Tool) => void;
     setInteractionState: (state: InteractionState) => void;
@@ -19,8 +18,7 @@ type useKeyboardAndClipboardProps = {
 export function useKeyboardAndClipboard({
   selectedShapes,
   canvasViewScale,
-  addShape,
-  setSelectedShapeIds,
+  addShapes,
   deleteSelectedShapes,
   setActiveTool,
   setInteractionState,
@@ -45,11 +43,10 @@ export function useKeyboardAndClipboard({
                 x: shape.x + 10 / canvasViewScale,
                 y: shape.y + 10 / canvasViewScale,
             }));
-            newShapes.forEach(addShape);
-            setSelectedShapeIds(newShapes.map(s => s.id));
+            addShapes(newShapes);
             setClipboard(newShapes);
         }
-    }, [clipboard, addShape, setSelectedShapeIds, canvasViewScale]);
+    }, [clipboard, addShapes, canvasViewScale]);
 
     useEffect(() => {
       const handleKeyDown = (e: KeyboardEvent) => {
@@ -87,7 +84,6 @@ export function useKeyboardAndClipboard({
         if ((e.key === 'Backspace' || e.key === 'Delete')) {
           deleteSelectedShapes();
         } else if (e.key === 'Escape') {
-          setSelectedShapeIds([]);
           setActiveTool('select');
           setInteractionState({ type: 'none' });
         } else {
@@ -102,7 +98,7 @@ export function useKeyboardAndClipboard({
       };
       window.addEventListener('keydown', handleKeyDown);
       return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [deleteSelectedShapes, handleCopy, handlePaste, setSelectedShapeIds, setActiveTool, setInteractionState, undo, redo]);
+    }, [deleteSelectedShapes, handleCopy, handlePaste, setActiveTool, setInteractionState, undo, redo]);
     
     return {
         clipboard,

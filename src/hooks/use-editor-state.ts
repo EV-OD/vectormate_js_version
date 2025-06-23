@@ -23,7 +23,7 @@ type EditorState = {
 type Action =
   | { type: 'UNDO' }
   | { type: 'REDO' }
-  | { type: 'SET_STATE'; payload: { data: HistoryData, commit: boolean } }
+  | { type: 'SET_STATE'; payload: { updater: (current: HistoryData) => Partial<HistoryData>, commit: boolean } }
   | { type: 'COMMIT' };
 
 
@@ -61,24 +61,28 @@ function editorReducer(state: EditorState, action: Action): EditorState {
       };
     }
     case 'SET_STATE': {
-      const { data, commit } = action.payload;
+      const { updater, commit } = action.payload;
+      const newPresent = { ...present, ...updater(present) };
+
       if (!commit) {
-        return { ...state, present: data };
+        return { ...state, present: newPresent };
       }
       
-      if (past.length > 0 && JSON.stringify(past[past.length - 1]) === JSON.stringify(data)) {
-        return { ...state, present: data };
+      const pastDataToCompare = past.length > 0 ? past[past.length - 1] : null;
+      if (pastDataToCompare && JSON.stringify(pastDataToCompare) === JSON.stringify(newPresent)) {
+        return { ...state, present: newPresent };
       }
 
       const newPast = [...past, present].slice(-HISTORY_LIMIT);
       return {
         past: newPast,
-        present: data,
+        present: newPresent,
         future: [],
       };
     }
     case 'COMMIT': {
-      if (past.length > 0 && JSON.stringify(past[past.length - 1]) === JSON.stringify(present)) {
+      const pastDataToCompare = past.length > 0 ? past[past.length - 1] : null;
+      if (pastDataToCompare && JSON.stringify(pastDataToCompare) === JSON.stringify(present)) {
         return state;
       }
       const newPast = [...past, present].slice(-HISTORY_LIMIT);
@@ -105,168 +109,194 @@ export function useEditorState() {
   
   const commit = useCallback(() => dispatch({ type: 'COMMIT' }), []);
   
-  const setState = useCallback((data: Partial<HistoryData>, commit: boolean) => {
-    const newState = { ...state.present, ...data };
-    dispatch({ type: 'SET_STATE', payload: { data: newState, commit } });
-  }, [state.present]);
+  const setState = useCallback((updater: (current: HistoryData) => Partial<HistoryData>, commit: boolean) => {
+    dispatch({ type: 'SET_STATE', payload: { updater, commit } });
+  }, []);
 
   const addShape = useCallback((shape: Shape) => {
     const newShape = { ...shape };
     if (!newShape.name) {
       newShape.name = newShape.type.charAt(0).toUpperCase() + newShape.type.slice(1);
     }
-    setState({
-      shapes: [...state.present.shapes, newShape],
+    setState(current => ({
+      shapes: [...current.shapes, newShape],
       selectedShapeIds: [newShape.id],
-    }, true);
-  }, [state.present.shapes, setState]);
+    }), true);
+  }, [setState]);
+
+  const addShapes = useCallback((shapes: Shape[]) => {
+    if (shapes.length === 0) return;
+    const newShapesWithDefaults = shapes.map(s => ({
+        ...s,
+        name: s.name || (s.type.charAt(0).toUpperCase() + s.type.slice(1))
+    }));
+    setState(current => ({
+        shapes: [...current.shapes, ...newShapesWithDefaults],
+        selectedShapeIds: newShapesWithDefaults.map(s => s.id)
+    }), true);
+  }, [setState]);
 
   const updateShapes = useCallback((updatedShapes: Shape[]) => {
-    setState({ shapes: state.present.shapes.map(s => {
-        const updated = updatedShapes.find(us => us.id === s.id);
-        return updated ? updated : s;
-      }) 
-    }, false);
-  }, [state.present.shapes, setState]);
+    setState(current => ({ 
+        shapes: current.shapes.map(s => {
+            const updated = updatedShapes.find(us => us.id === s.id);
+            return updated ? updated : s;
+        }) 
+    }), false);
+  }, [setState]);
 
-  const setSelectedShapeIds = useCallback((ids: string[]) => {
-    setState({ selectedShapeIds: ids }, false);
+  const setSelectedShapeIds = useCallback((ids: string[] | ((currentIds: string[]) => string[])) => {
+    setState(current => ({ 
+        selectedShapeIds: typeof ids === 'function' ? ids(current.selectedShapeIds) : ids
+    }), false);
   }, [setState]);
 
   const deleteShapesByIds = useCallback((ids: string[]) => {
     if (ids.length > 0) {
-      setState({
-        shapes: state.present.shapes.filter(s => !ids.includes(s.id)),
+      setState(current => ({
+        shapes: current.shapes.filter(s => !ids.includes(s.id)),
         selectedShapeIds: [],
-      }, true);
+      }), true);
     }
-  }, [state.present.shapes, setState]);
+  }, [setState]);
   
   const bringToFront = useCallback((ids: string[]) => {
       if (ids.length > 0) {
-          const toMove = state.present.shapes.filter(s => ids.includes(s.id));
-          const others = state.present.shapes.filter(s => !ids.includes(s.id));
-          setState({ shapes: [...others, ...toMove] }, true);
+          setState(current => {
+            const toMove = current.shapes.filter(s => ids.includes(s.id));
+            const others = current.shapes.filter(s => !ids.includes(s.id));
+            return { shapes: [...others, ...toMove] };
+          }, true);
       }
-  }, [state.present.shapes, setState]);
+  }, [setState]);
 
   const sendToBack = useCallback((ids: string[]) => {
       if (ids.length > 0) {
-          const toMove = state.present.shapes.filter(s => ids.includes(s.id));
-          const others = state.present.shapes.filter(s => !ids.includes(s.id));
-          setState({ shapes: [...toMove, ...others] }, true);
+          setState(current => {
+            const toMove = current.shapes.filter(s => ids.includes(s.id));
+            const others = current.shapes.filter(s => !ids.includes(s.id));
+            return { shapes: [...toMove, ...others] };
+          }, true);
       }
-  }, [state.present.shapes, setState]);
+  }, [setState]);
   
   const duplicateShapes = useCallback((ids: string[]) => {
     if (ids.length > 0) {
-      const shapesToDuplicate = state.present.shapes.filter(s => ids.includes(s.id));
-      if (shapesToDuplicate.length === 0) return;
-      const newShapes = shapesToDuplicate.map(shape => ({
-        ...shape,
-        id: nanoid(),
-        name: `${shape.name || shape.type} copy`,
-        x: shape.x + 10,
-        y: shape.y + 10,
-      }));
-      setState({
-        shapes: [...state.present.shapes, ...newShapes],
-        selectedShapeIds: newShapes.map(s => s.id),
-      }, true);
+        setState(current => {
+            const shapesToDuplicate = current.shapes.filter(s => ids.includes(s.id));
+            if (shapesToDuplicate.length === 0) return {};
+            const newShapes = shapesToDuplicate.map(shape => ({
+                ...shape,
+                id: nanoid(),
+                name: `${shape.name || shape.type} copy`,
+                x: shape.x + 10,
+                y: shape.y + 10,
+            }));
+            return {
+                shapes: [...current.shapes, ...newShapes],
+                selectedShapeIds: newShapes.map(s => s.id),
+            };
+        }, true);
     }
-  }, [state.present.shapes, setState]);
+  }, [setState]);
   
   const reorderShapes = useCallback((fromId: string, toId: string, position: 'top' | 'bottom') => {
-    const reversedShapes = [...state.present.shapes].reverse();
-    const fromIndex = reversedShapes.findIndex(s => s.id === fromId);
-    let toIndex = reversedShapes.findIndex(s => s.id === toId);
-    if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return;
-    const [movedItem] = reversedShapes.splice(fromIndex, 1);
-    if (fromIndex < toIndex) { toIndex--; }
-    if (position === 'top') {
-      reversedShapes.splice(toIndex, 0, movedItem);
-    } else {
-      reversedShapes.splice(toIndex + 1, 0, movedItem);
-    }
-    setState({ shapes: reversedShapes.reverse() }, true);
-  }, [state.present.shapes, setState]);
+    setState(current => {
+        const reversedShapes = [...current.shapes].reverse();
+        const fromIndex = reversedShapes.findIndex(s => s.id === fromId);
+        let toIndex = reversedShapes.findIndex(s => s.id === toId);
+        if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return {};
+        
+        const [movedItem] = reversedShapes.splice(fromIndex, 1);
+        if (fromIndex < toIndex) { toIndex--; }
+        
+        if (position === 'top') {
+            reversedShapes.splice(toIndex, 0, movedItem);
+        } else {
+            reversedShapes.splice(toIndex + 1, 0, movedItem);
+        }
+        return { shapes: reversedShapes.reverse() };
+    }, true);
+  }, [setState]);
   
   const renameShape = useCallback((id: string, name: string) => {
-    setState({
-      shapes: state.present.shapes.map(s =>
+    setState(current => ({
+      shapes: current.shapes.map(s =>
         s.id === id ? { ...s, name: name } : s
       ),
-    }, true);
-  }, [state.present.shapes, setState]);
+    }), true);
+  }, [setState]);
 
   const applyBooleanOperation = (operation: 'union' | 'subtract' | 'intersect' | 'exclude') => {
-    if (state.present.selectedShapeIds.length < 2) {
-      toast({
-        title: "Selection Error",
-        description: "Please select at least two shapes for a boolean operation.",
-        variant: "destructive",
-      });
-      return;
-    }
+    setState(current => {
+        if (current.selectedShapeIds.length < 2) {
+            toast({
+                title: "Selection Error",
+                description: "Please select at least two shapes for a boolean operation.",
+                variant: "destructive",
+            });
+            return {};
+        }
 
-    const selectedShapes = state.present.shapes.filter(s => state.present.selectedShapeIds.includes(s.id));
-    const compatibleShapes = selectedShapes.filter(s => s.type !== 'line');
-    
-    if (compatibleShapes.length < 2) {
-        toast({
-            title: "Compatibility Error",
-            description: "Boolean operations require at least two compatible shapes (rectangles, circles, or polygons).",
-            variant: "destructive",
-        });
-        return;
-    }
+        const selectedShapes = current.shapes.filter(s => current.selectedShapeIds.includes(s.id));
+        const compatibleShapes = selectedShapes.filter(s => s.type !== 'line');
+        
+        if (compatibleShapes.length < 2) {
+            toast({
+                title: "Compatibility Error",
+                description: "Boolean operations require at least two compatible shapes (rectangles, circles, or polygons).",
+                variant: "destructive",
+            });
+            return {};
+        }
 
-    // Operations are performed on the two bottom-most (in z-order) selected shapes.
-    // For subtract, shape2 (the one higher in the stack) will cut shape1.
-    const [shape1, shape2] = compatibleShapes;
+        const [shape1, shape2] = compatibleShapes;
 
-    let newShape: PolygonShape | null = null;
-    switch (operation) {
-        case 'union':
-            newShape = union(shape1, shape2);
-            break;
-        case 'subtract':
-            newShape = subtract(shape1, shape2);
-            break;
-        case 'intersect':
-            newShape = intersect(shape1, shape2);
-            break;
-        case 'exclude':
-            newShape = exclude(shape1, shape2);
-            break;
-    }
-    
-    if (newShape) {
-        const idsToRemove = [shape1.id, shape2.id];
-        const otherShapes = state.present.shapes.filter(s => !idsToRemove.includes(s.id));
+        let newShape: PolygonShape | null = null;
+        switch (operation) {
+            case 'union':
+                newShape = union(shape1, shape2);
+                break;
+            case 'subtract':
+                newShape = subtract(shape1, shape2);
+                break;
+            case 'intersect':
+                newShape = intersect(shape1, shape2);
+                break;
+            case 'exclude':
+                newShape = exclude(shape1, shape2);
+                break;
+        }
+        
+        if (newShape) {
+            const idsToRemove = [shape1.id, shape2.id];
+            const otherShapes = current.shapes.filter(s => !idsToRemove.includes(s.id));
 
-        setState({
-            shapes: [...otherShapes, newShape],
-            selectedShapeIds: [newShape.id],
-        }, true);
+            toast({
+                title: `${operation.charAt(0).toUpperCase() + operation.slice(1)} Applied`,
+                description: "Shapes were successfully combined.",
+            });
+            return {
+                shapes: [...otherShapes, newShape],
+                selectedShapeIds: [newShape.id],
+            };
 
-        toast({
-            title: `${operation.charAt(0).toUpperCase() + operation.slice(1)} Applied`,
-            description: "Shapes were successfully combined.",
-        });
-    } else {
-         toast({
-            title: "Operation Failed",
-            description: "The boolean operation could not be completed. Make sure shapes are overlapping.",
-            variant: "destructive"
-        });
-    }
+        } else {
+             toast({
+                title: "Operation Failed",
+                description: "The boolean operation could not be completed. Make sure shapes are overlapping.",
+                variant: "destructive"
+            });
+            return {};
+        }
+    }, true);
   };
   
   return {
     shapes: state.present.shapes,
     selectedShapeIds: state.present.selectedShapeIds,
     addShape,
+    addShapes,
     updateShapes,
     commit,
     setSelectedShapeIds,

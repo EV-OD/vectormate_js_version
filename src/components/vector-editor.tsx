@@ -18,6 +18,7 @@ export function VectorEditor() {
     shapes,
     selectedShapeIds,
     addShape,
+    addShapes,
     updateShapes,
     commit,
     setSelectedShapeIds,
@@ -64,8 +65,7 @@ export function VectorEditor() {
   const { clipboard, handleCopy, handlePaste } = useKeyboardAndClipboard({
     selectedShapes,
     canvasViewScale: canvasView.scale,
-    addShape,
-    setSelectedShapeIds,
+    addShapes,
     deleteSelectedShapes,
     setActiveTool,
     setInteractionState,
