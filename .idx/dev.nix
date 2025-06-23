@@ -7,9 +7,16 @@
   packages = [
     pkgs.nodejs_20
     pkgs.zulu
+    pkgs.emscripten
+    pkgs.cmake       # Optional: for cross-platform C++ builds
+    pkgs.ninja       # Optional: build tool used with emscripten
   ];
   # Sets environment variables in the workspace
-  env = {};
+   env = {
+    # Optional: Set EMCC as the compiler
+    CC = "emcc";
+    CXX = "em++";
+  };
   # This adds a file watcher to startup the firebase emulators. The emulators will only start if
   # a firebase.json file is written into the user's directory
   services.firebase.emulators = {
@@ -20,7 +27,8 @@
   idx = {
     # Search for the extensions you want on https://open-vsx.org/ and use "publisher.id"
     extensions = [
-      # "vscodevim.vim"
+      # Add relevant extensions if needed, e.g., C++ syntax highlighting
+      # "ms-vscode.cpptools"
     ];
     workspace = {
       onCreate = {
