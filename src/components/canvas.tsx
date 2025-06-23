@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useRef, useMemo } from 'react';
-import { type Shape, type Tool, type InteractionState, type Handle, PolygonShape, ShapeType } from '@/lib/types';
+import { type Shape, type Tool, type InteractionState, type Handle, PolygonShape, ShapeType, CanvasView } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { nanoid } from 'nanoid';
 
@@ -16,6 +16,7 @@ type CanvasProps = {
   interactionState: InteractionState;
   setInteractionState: (state: InteractionState) => void;
   setContextMenu: (menu: { x: number; y: number; shapeId: string } | null) => void;
+  canvasView: CanvasView;
 };
 
 const SELECTION_COLOR = 'hsl(var(--primary))';
@@ -47,6 +48,7 @@ export function Canvas({
   interactionState,
   setInteractionState,
   setContextMenu,
+  canvasView,
 }: CanvasProps) {
   const svgRef = useRef<SVGSVGElement>(null);
 
@@ -256,7 +258,7 @@ export function Canvas({
     <svg
       id="vector-canvas"
       ref={svgRef}
-      className={cn("w-full h-full bg-background cursor-crosshair", {
+      className={cn("w-full h-full cursor-crosshair", {
         'cursor-grab': activeTool === 'select' && interactionState.type !== 'resizing',
         'cursor-grabbing': interactionState.type === 'moving' || interactionState.type === 'panning',
       })}
@@ -265,6 +267,28 @@ export function Canvas({
       onMouseUp={handleMouseUp}
       onContextMenu={handleContextMenu}
     >
+        <defs>
+            {canvasView.background === 'grid' && (
+              <pattern id="grid" width={canvasView.gridSize} height={canvasView.gridSize} patternUnits="userSpaceOnUse">
+                <path d={`M ${canvasView.gridSize} 0 L 0 0 0 ${canvasView.gridSize}`} fill="none" stroke="hsl(var(--border))" strokeWidth="0.5"/>
+              </pattern>
+            )}
+            {canvasView.background === 'dots' && (
+              <pattern id="dots" width={canvasView.gridSize} height={canvasView.gridSize} patternUnits="userSpaceOnUse">
+                <circle cx="1" cy="1" r="1" fill="hsl(var(--border))" />
+              </pattern>
+            )}
+        </defs>
+          
+        <rect
+            width="100%"
+            height="100%"
+            fill={
+                canvasView.background === 'solid'
+                ? 'hsl(var(--background))'
+                : `url(#${canvasView.background})`
+            }
+        />
       <g>
         {shapes.map(shape => {
           const commonProps = {
@@ -278,9 +302,9 @@ export function Canvas({
 
           switch (shape.type) {
             case 'rectangle':
-              return <rect key={shape.id} x={shape.x} y={shape.y} width={shape.width} height={shape.height} {...commonProps} />;
+              return <rect key={shape.id} x={shape.x} y={shape.y} width={shape.width} height={shape.height} {...restProps} transform={rotateTransform} />;
             case 'circle':
-              return <ellipse key={shape.id} cx={shape.x + shape.width / 2} cy={shape.y + shape.height / 2} rx={shape.width / 2} ry={shape.height / 2} {...commonProps} />;
+              return <ellipse key={shape.id} cx={shape.x + shape.width / 2} cy={shape.y + shape.height / 2} rx={shape.width / 2} ry={shape.height / 2} {...restProps} transform={rotateTransform} />;
             case 'polygon': {
                 return <polygon key={shape.id} points={shape.points} transform={`translate(${shape.x} ${shape.y}) ${rotateTransform}`} {...restProps} />;
               }

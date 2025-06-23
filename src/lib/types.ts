@@ -38,3 +38,8 @@ export type InteractionState =
   | { type: 'resizing'; handle: Handle; startX: number; startY: number; initialShapes: Shape[]; aspectRatios: number[] }
   | { type: 'rotating'; startX: number; startY: number; initialShapes: Shape[] }
   | { type: 'panning', startX: number, startY: number };
+
+export type CanvasView = {
+  background: 'solid' | 'grid' | 'dots';
+  gridSize: number;
+};

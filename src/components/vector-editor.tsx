@@ -5,7 +5,7 @@ import { AppHeader } from '@/components/header';
 import { Toolbar } from '@/components/toolbar';
 import { Canvas } from '@/components/canvas';
 import { PropertiesPanel } from '@/components/properties-panel';
-import { type Shape, type Tool, type InteractionState, PolygonShape } from '@/lib/types';
+import { type Shape, type Tool, type InteractionState, PolygonShape, type CanvasView } from '@/lib/types';
 import { exportToSvg, exportToJpeg } from '@/lib/export';
 import { useToast } from '@/hooks/use-toast';
 import { nanoid } from 'nanoid';
@@ -86,6 +86,14 @@ export function VectorEditor() {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; shapeId: string } | null>(null);
   const [clipboard, setClipboard] = useState<Shape[]>([]);
   const { toast } = useToast();
+  const [canvasView, setCanvasView] = useState<CanvasView>({
+    background: 'solid',
+    gridSize: 20,
+  });
+
+  const handleViewChange = useCallback((viewUpdate: Partial<CanvasView>) => {
+    setCanvasView(prev => ({ ...prev, ...viewUpdate }));
+  }, []);
 
   const handleExport = (format: 'svg' | 'jpeg') => {
     const canvasEl = document.getElementById('vector-canvas');
@@ -242,7 +250,7 @@ export function VectorEditor() {
 
   return (
     <div className="flex flex-col h-screen bg-muted/40 font-sans" onDrop={handleDrop} onDragOver={(e) => e.preventDefault()}>
-      <AppHeader onExport={handleExport} />
+      <AppHeader onExport={handleExport} canvasView={canvasView} onViewChange={handleViewChange} />
       <div className="flex flex-1 overflow-hidden">
         <Toolbar activeTool={activeTool} onToolSelect={setActiveTool} onBooleanOperation={applyBooleanOperation} disabled={selectedShapes.length < 2} />
         <main className="flex-1 relative bg-background shadow-inner">
@@ -257,6 +265,7 @@ export function VectorEditor() {
             interactionState={interactionState}
             setInteractionState={setInteractionState}
             setContextMenu={setContextMenu}
+            canvasView={canvasView}
           />
         </main>
         <PropertiesPanel
