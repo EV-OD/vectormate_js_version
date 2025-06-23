@@ -19,6 +19,7 @@ export function VectorEditor() {
     selectedShapeIds,
     addShape,
     updateShapes,
+    commit,
     setSelectedShapeIds,
     deleteShapesByIds,
     bringToFront,
@@ -137,6 +138,13 @@ export function VectorEditor() {
       setSelectedShapeIds([id]);
     }
   };
+  
+  const handleShapesUpdate = useCallback((updatedShapes: Shape[], shouldCommit: boolean = false) => {
+    updateShapes(updatedShapes);
+    if (shouldCommit) {
+      commit();
+    }
+  }, [updateShapes, commit]);
 
   return (
     <div className="flex flex-col h-screen bg-muted/40 font-sans" onDrop={handleDrop} onDragOver={(e) => e.preventDefault()}>
@@ -152,6 +160,7 @@ export function VectorEditor() {
             setSelectedShapeIds={setSelectedShapeIds}
             addShape={addShape}
             updateShapes={updateShapes}
+            commitUpdate={commit}
             interactionState={interactionState}
             setInteractionState={setInteractionState}
             setContextMenu={setContextMenu}
@@ -162,7 +171,8 @@ export function VectorEditor() {
         <RightSidebar
           shapes={shapes}
           selectedShapeIds={selectedShapeIds}
-          onShapesUpdate={updateShapes}
+          onShapesUpdate={handleShapesUpdate}
+          onCommit={commit}
           onSelectShape={handleSelectShapeInLayerPanel}
           onDelete={deleteSelectedShapes}
           onDuplicate={duplicateSelectedShapes}

@@ -15,6 +15,7 @@ type CanvasProps = {
   setSelectedShapeIds: (ids: string[]) => void;
   addShape: (shape: Shape) => void;
   updateShapes: (shapes: Shape[]) => void;
+  commitUpdate: () => void;
   interactionState: InteractionState;
   setInteractionState: (state: InteractionState) => void;
   setContextMenu: (menu: { x: number; y: number; shapeId: string } | null) => void;

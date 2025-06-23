@@ -16,7 +16,8 @@ import { ScrollArea } from './ui/scroll-area';
 type RightSidebarProps = {
   shapes: Shape[];
   selectedShapeIds: string[];
-  onShapesUpdate: (updatedShapes: Shape[]) => void;
+  onShapesUpdate: (updatedShapes: Shape[], commit: boolean) => void;
+  onCommit: () => void;
   onSelectShape: (id: string, shiftKey: boolean) => void;
   onDelete: () => void;
   onDuplicate: () => void;
@@ -28,6 +29,7 @@ export function RightSidebar({
   shapes, 
   selectedShapeIds, 
   onShapesUpdate, 
+  onCommit,
   onSelectShape, 
   onDelete, 
   onDuplicate, 
@@ -42,7 +44,7 @@ export function RightSidebar({
   const isSingleRectangle = selectedShapes.length === 1 && shape?.type === 'rectangle';
   const showFillAndOpacity = selectedShapes.some(s => s.type !== 'line');
 
-  const handlePropertyChange = (prop: keyof Shape, value: any) => {
+  const handlePropertyChange = (prop: keyof Shape, value: any, commit: boolean = false) => {
     const updated = selectedShapes.map(s => {
       const newShape = { ...s };
 
@@ -66,7 +68,7 @@ export function RightSidebar({
       return newShape;
     });
 
-    onShapesUpdate(updated);
+    onShapesUpdate(updated, commit);
   };
   
   const getCommonValue = (prop: keyof Shape): string | number => {
@@ -121,23 +123,23 @@ export function RightSidebar({
                         <div className="grid grid-cols-2 gap-x-2 gap-y-4">
                           <div>
                             <Label htmlFor="pos-x">X</Label>
-                            <Input id="pos-x" type="number" value={getCommonValue('x')} onChange={e => handlePropertyChange('x', e.target.value)} disabled={multipleSelected} />
+                            <Input id="pos-x" type="number" value={getCommonValue('x')} onChange={e => handlePropertyChange('x', e.target.value)} onBlur={onCommit} disabled={multipleSelected} />
                           </div>
                           <div>
                             <Label htmlFor="pos-y">Y</Label>
-                            <Input id="pos-y" type="number" value={getCommonValue('y')} onChange={e => handlePropertyChange('y', e.target.value)} disabled={multipleSelected} />
+                            <Input id="pos-y" type="number" value={getCommonValue('y')} onChange={e => handlePropertyChange('y', e.target.value)} onBlur={onCommit} disabled={multipleSelected} />
                           </div>
                           <div>
                             <Label htmlFor="width">W</Label>
-                            <Input id="width" type="number" value={getCommonValue('width')} onChange={e => handlePropertyChange('width', Math.max(0, Number(e.target.value)))} disabled={multipleSelected}/>
+                            <Input id="width" type="number" value={getCommonValue('width')} onChange={e => handlePropertyChange('width', Math.max(0, Number(e.target.value)))} onBlur={onCommit} disabled={multipleSelected}/>
                           </div>
                           <div>
                             <Label htmlFor="height">H</Label>
-                            <Input id="height" type="number" value={getCommonValue('height')} onChange={e => handlePropertyChange('height', Math.max(0, Number(e.target.value)))} disabled={multipleSelected}/>
+                            <Input id="height" type="number" value={getCommonValue('height')} onChange={e => handlePropertyChange('height', Math.max(0, Number(e.target.value)))} onBlur={onCommit} disabled={multipleSelected}/>
                           </div>
                           <div className="col-span-2">
                             <Label htmlFor="rotation">Rotate</Label>
-                            <Input id="rotation" type="number" value={getCommonValue('rotation')} onChange={e => handlePropertyChange('rotation', e.target.value)} disabled={multipleSelected}/>
+                            <Input id="rotation" type="number" value={getCommonValue('rotation')} onChange={e => handlePropertyChange('rotation', e.target.value)} onBlur={onCommit} disabled={multipleSelected}/>
                           </div>
                         </div>
                       </AccordionContent>
@@ -152,8 +154,8 @@ export function RightSidebar({
                               <div>
                                 <Label>Fill</Label>
                                 <div className="flex items-center gap-2">
-                                  <Input type="color" value={String(getCommonValue('fill') ?? '#cccccc')} onChange={e => handlePropertyChange('fill', e.target.value)} className="p-1 h-8 w-8" />
-                                  <Input type="text" value={String(getCommonValue('fill') ?? '')} onChange={e => handlePropertyChange('fill', e.target.value)} placeholder={getCommonValue('fill') === 'Mixed' ? 'Mixed' : '#cccccc'} />
+                                  <Input type="color" value={String(getCommonValue('fill') ?? '#cccccc')} onChange={e => handlePropertyChange('fill', e.target.value, true)} className="p-1 h-8 w-8" />
+                                  <Input type="text" value={String(getCommonValue('fill') ?? '')} onChange={e => handlePropertyChange('fill', e.target.value)} onBlur={onCommit} placeholder={getCommonValue('fill') === 'Mixed' ? 'Mixed' : '#cccccc'} />
                                 </div>
                               </div>
                               <div>
@@ -162,6 +164,7 @@ export function RightSidebar({
                                   <Slider
                                     value={[getSliderValue('opacity', 100, 100)]}
                                     onValueChange={([val]) => handlePropertyChange('opacity', val / 100)}
+                                    onValueCommit={onCommit}
                                     max={100}
                                     step={1}
                                   />
@@ -180,6 +183,7 @@ export function RightSidebar({
                                   <Slider
                                     value={[(shape as RectangleShape).borderRadius || 0]}
                                     onValueChange={([val]) => handlePropertyChange('borderRadius', val)}
+                                    onValueCommit={onCommit}
                                     max={Math.min(shape.width, shape.height) / 2}
                                     step={1}
                                   />
@@ -193,13 +197,13 @@ export function RightSidebar({
                           <div>
                             <Label>Stroke</Label>
                             <div className="flex items-center gap-2">
-                              <Input type="color" value={String(getCommonValue('stroke') ?? '#000000')} onChange={e => handlePropertyChange('stroke', e.target.value)} className="p-1 h-8 w-8" />
-                              <Input type="text" value={String(getCommonValue('stroke') ?? '')} onChange={e => handlePropertyChange('stroke', e.target.value)} placeholder={getCommonValue('stroke') === 'Mixed' ? 'Mixed' : '#000000'} />
+                              <Input type="color" value={String(getCommonValue('stroke') ?? '#000000')} onChange={e => handlePropertyChange('stroke', e.target.value, true)} className="p-1 h-8 w-8" />
+                              <Input type="text" value={String(getCommonValue('stroke') ?? '')} onChange={e => handlePropertyChange('stroke', e.target.value)} onBlur={onCommit} placeholder={getCommonValue('stroke') === 'Mixed' ? 'Mixed' : '#000000'} />
                             </div>
                           </div>
                           <div>
                             <Label htmlFor="stroke-width">Stroke Width</Label>
-                            <Input id="stroke-width" type="number" value={String(getCommonValue('strokeWidth') ?? '0')} min={0} onChange={e => handlePropertyChange('strokeWidth', e.target.value)} />
+                            <Input id="stroke-width" type="number" value={String(getCommonValue('strokeWidth') ?? '0')} min={0} onChange={e => handlePropertyChange('strokeWidth', e.target.value)} onBlur={onCommit} />
                           </div>
                         </div>
                       </AccordionContent>

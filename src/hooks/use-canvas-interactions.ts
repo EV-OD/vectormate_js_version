@@ -14,6 +14,7 @@ type UseCanvasInteractionsProps = {
   setSelectedShapeIds: (ids: string[]) => void;
   addShape: (shape: Shape) => void;
   updateShapes: (shapes: Shape[]) => void;
+  commitUpdate: () => void;
   interactionState: InteractionState;
   setInteractionState: (state: InteractionState) => void;
   setContextMenu: (menu: { x: number; y: number; shapeId: string } | null) => void;
@@ -29,6 +30,7 @@ export function useCanvasInteractions({
   setSelectedShapeIds,
   addShape,
   updateShapes,
+  commitUpdate,
   interactionState,
   setInteractionState,
   setContextMenu,
@@ -483,6 +485,10 @@ export function useCanvasInteractions({
     setMarquee(null);
     setActiveSnapLines({ vertical: [], horizontal: [] });
 
+    if (['moving', 'resizing', 'rotating', 'drawing'].includes(interactionState.type)) {
+        commitUpdate();
+    }
+    
     const lastDrawnShape = interactionState.type === 'drawing' ? shapes.find(s => s.id === interactionState.currentShapeId) : null;
     if (lastDrawnShape && (lastDrawnShape.width === 0 && lastDrawnShape.height === 0)) {
         const width = 50, height = 50;
@@ -501,7 +507,7 @@ export function useCanvasInteractions({
     if (activeTool !== 'select') {
         setActiveTool('select');
     }
-  }, [interactionState, marquee, shapes, selectedShapeIds, setSelectedShapeIds, updateShapes, setInteractionState, activeTool, setActiveTool]);
+  }, [interactionState, marquee, shapes, selectedShapeIds, setSelectedShapeIds, updateShapes, setInteractionState, activeTool, setActiveTool, commitUpdate]);
 
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
