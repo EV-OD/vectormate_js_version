@@ -227,70 +227,68 @@ export function useEditorState() {
     }), true);
   }, [setState]);
 
-  const applyBooleanOperation = (operation: 'union' | 'subtract' | 'intersect' | 'exclude') => {
-    setState(current => {
-        if (current.selectedShapeIds.length < 2) {
-            toast({
-                title: "Selection Error",
-                description: "Please select at least two shapes for a boolean operation.",
-                variant: "destructive",
-            });
-            return {};
-        }
+  const applyBooleanOperation = useCallback((operation: 'union' | 'subtract' | 'intersect' | 'exclude') => {
+    const { shapes, selectedShapeIds } = state.present;
+    if (selectedShapeIds.length < 2) {
+        toast({
+            title: "Selection Error",
+            description: "Please select at least two shapes for a boolean operation.",
+            variant: "destructive",
+        });
+        return;
+    }
 
-        const selectedShapes = current.shapes.filter(s => current.selectedShapeIds.includes(s.id));
-        const compatibleShapes = selectedShapes.filter(s => s.type !== 'line');
+    const selectedShapes = shapes.filter(s => selectedShapeIds.includes(s.id));
+    const compatibleShapes = selectedShapes.filter(s => !['line', 'image', 'svg'].includes(s.type));
+    
+    if (compatibleShapes.length < 2) {
+        toast({
+            title: "Compatibility Error",
+            description: "Boolean operations require at least two compatible shapes (rectangles, circles, or polygons).",
+            variant: "destructive",
+        });
+        return;
+    }
+
+    const [shape1, shape2] = compatibleShapes;
+
+    let newShape: PolygonShape | null = null;
+    switch (operation) {
+        case 'union':
+            newShape = union(shape1, shape2);
+            break;
+        case 'subtract':
+            newShape = subtract(shape1, shape2);
+            break;
+        case 'intersect':
+            newShape = intersect(shape1, shape2);
+            break;
+        case 'exclude':
+            newShape = exclude(shape1, shape2);
+            break;
+    }
+    
+    if (newShape) {
+        const idsToRemove = [shape1.id, shape2.id];
         
-        if (compatibleShapes.length < 2) {
-            toast({
-                title: "Compatibility Error",
-                description: "Boolean operations require at least two compatible shapes (rectangles, circles, or polygons).",
-                variant: "destructive",
-            });
-            return {};
-        }
+        setState(current => ({
+            shapes: [...current.shapes.filter(s => !idsToRemove.includes(s.id)), newShape],
+            selectedShapeIds: [newShape.id],
+        }), true);
 
-        const [shape1, shape2] = compatibleShapes;
+        toast({
+            title: `${operation.charAt(0).toUpperCase() + operation.slice(1)} Applied`,
+            description: "Shapes were successfully combined.",
+        });
 
-        let newShape: PolygonShape | null = null;
-        switch (operation) {
-            case 'union':
-                newShape = union(shape1, shape2);
-                break;
-            case 'subtract':
-                newShape = subtract(shape1, shape2);
-                break;
-            case 'intersect':
-                newShape = intersect(shape1, shape2);
-                break;
-            case 'exclude':
-                newShape = exclude(shape1, shape2);
-                break;
-        }
-        
-        if (newShape) {
-            const idsToRemove = [shape1.id, shape2.id];
-            const otherShapes = current.shapes.filter(s => !idsToRemove.includes(s.id));
-
-            toast({
-                title: `${operation.charAt(0).toUpperCase() + operation.slice(1)} Applied`,
-                description: "Shapes were successfully combined.",
-            });
-            return {
-                shapes: [...otherShapes, newShape],
-                selectedShapeIds: [newShape.id],
-            };
-
-        } else {
-             toast({
-                title: "Operation Failed",
-                description: "The boolean operation could not be completed. Make sure shapes are overlapping.",
-                variant: "destructive"
-            });
-            return {};
-        }
-    }, true);
-  };
+    } else {
+         toast({
+            title: "Operation Failed",
+            description: "The boolean operation could not be completed. Make sure shapes are overlapping.",
+            variant: "destructive"
+        });
+    }
+  }, [state.present, setState, toast]);
   
   return {
     shapes: state.present.shapes,
