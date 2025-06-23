@@ -66,7 +66,7 @@ export function Canvas(props: CanvasProps) {
       id="vector-canvas"
       ref={svgRef}
       className={cn("w-full h-full cursor-crosshair", {
-        'cursor-grab': props.activeTool === 'pan' || (props.activeTool === 'select' && !['resizing', 'marquee', 'moving', 'rotating'].includes(interactionState.type)),
+        'cursor-grab': props.activeTool === 'pan' || (props.activeTool === 'select' && !['resizing', 'marquee', 'moving', 'rotating', 'editing'].includes(interactionState.type)),
         'cursor-grabbing': ['moving', 'panning', 'rotating'].includes(interactionState.type),
         'cursor-nwse-resize': interactionState.type === 'resizing' && (interactionState.handle === 'nw' || interactionState.handle === 'se'),
         'cursor-nesw-resize': interactionState.type === 'resizing' && (interactionState.handle === 'ne' || interactionState.handle === 'sw'),
@@ -138,6 +138,7 @@ export function Canvas(props: CanvasProps) {
                 commonProps.strokeWidth = pathShape.strokeWidth;
             }
 
+            const isInteracting = ['moving', 'resizing', 'rotating', 'editing'].includes(interactionState.type);
 
             switch (rest.type) {
               case 'rectangle':
@@ -170,7 +171,7 @@ export function Canvas(props: CanvasProps) {
               }
               case 'image': {
                 const { href } = rest as ImageShape;
-                if (interactionState.type === 'moving' && selectedShapeIds.includes(rest.id)) {
+                if (isInteracting && selectedShapeIds.includes(rest.id)) {
                     commonProps.style = { imageRendering: 'pixelated' };
                 }
                 return <image key={rest.id} href={href} x={rest.x} y={rest.y} width={rest.width} height={rest.height} {...commonProps} />;
@@ -178,7 +179,7 @@ export function Canvas(props: CanvasProps) {
               case 'svg': {
                 const { svgString } = rest as SVGShape;
                 const svgHref = `data:image/svg+xml;base64,${typeof window !== 'undefined' ? window.btoa(unescape(encodeURIComponent(svgString))) : ''}`;
-                if (interactionState.type === 'moving' && selectedShapeIds.includes(rest.id)) {
+                if (isInteracting && selectedShapeIds.includes(rest.id)) {
                     commonProps.style = { imageRendering: 'pixelated' };
                 }
                 return <image key={rest.id} href={svgHref} x={rest.x} y={rest.y} width={rest.width} height={rest.height} {...commonProps} />;

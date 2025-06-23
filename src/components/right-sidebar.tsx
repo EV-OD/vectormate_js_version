@@ -1,7 +1,7 @@
 'use client';
 
-import React from 'react';
-import { type Shape, RectangleShape, ImageShape, SVGShape, PolygonShape, PathShape, TextShape } from '@/lib/types';
+import React, { useCallback } from 'react';
+import { type Shape, RectangleShape, ImageShape, SVGShape, PolygonShape, PathShape, TextShape, InteractionState } from '@/lib/types';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -33,6 +33,7 @@ type RightSidebarProps = {
   onReorder: (fromId: string, toId: string, position: 'top' | 'bottom') => void;
   onRename: (id: string, name: string) => void;
   onExportSelection: (format: 'svg' | 'jpeg') => void;
+  setInteractionState: (state: InteractionState) => void;
 };
 
 export function RightSidebar({ 
@@ -46,6 +47,7 @@ export function RightSidebar({
   onReorder,
   onRename,
   onExportSelection,
+  setInteractionState,
 }: RightSidebarProps) {
   
   const selectedShapes = shapes.filter(s => selectedShapeIds.includes(s.id));
@@ -62,6 +64,14 @@ export function RightSidebar({
   const showStroke = selectedShapes.every(s => !['image', 'svg'].includes(s.type));
   const showOpacity = selectedShapes.every(s => s.type !== 'line');
 
+  const handleInteractionStart = useCallback(() => {
+    setInteractionState({ type: 'editing' });
+  }, [setInteractionState]);
+
+  const handleInteractionEnd = useCallback(() => {
+    setInteractionState({ type: 'none' });
+    onCommit();
+  }, [setInteractionState, onCommit]);
 
   const handlePropertyChange = (prop: keyof Shape | 'href' | 'svgString' | 'd' | 'text' | 'fontSize' | 'fontFamily' | 'fontWeight', value: any, commit: boolean = false) => {
     const updated = selectedShapes.map(s => {
@@ -180,23 +190,23 @@ export function RightSidebar({
                         <div className="grid grid-cols-2 gap-x-2 gap-y-4">
                           <div>
                             <Label htmlFor="pos-x">X</Label>
-                            <Input id="pos-x" type="number" value={getCommonValue('x')} onChange={e => handlePropertyChange('x', e.target.value)} onBlur={onCommit} disabled={multipleSelected} />
+                            <Input id="pos-x" type="number" value={getCommonValue('x')} onChange={e => handlePropertyChange('x', e.target.value)} onFocus={handleInteractionStart} onBlur={handleInteractionEnd} disabled={multipleSelected} />
                           </div>
                           <div>
                             <Label htmlFor="pos-y">Y</Label>
-                            <Input id="pos-y" type="number" value={getCommonValue('y')} onChange={e => handlePropertyChange('y', e.target.value)} onBlur={onCommit} disabled={multipleSelected} />
+                            <Input id="pos-y" type="number" value={getCommonValue('y')} onChange={e => handlePropertyChange('y', e.target.value)} onFocus={handleInteractionStart} onBlur={handleInteractionEnd} disabled={multipleSelected} />
                           </div>
                           <div>
                             <Label htmlFor="width">W</Label>
-                            <Input id="width" type="number" value={getCommonValue('width')} onChange={e => handlePropertyChange('width', Math.max(0, Number(e.target.value)))} onBlur={onCommit} disabled={multipleSelected || isSingleText}/>
+                            <Input id="width" type="number" value={getCommonValue('width')} onChange={e => handlePropertyChange('width', Math.max(0, Number(e.target.value)))} onFocus={handleInteractionStart} onBlur={handleInteractionEnd} disabled={multipleSelected || isSingleText}/>
                           </div>
                           <div>
                             <Label htmlFor="height">H</Label>
-                            <Input id="height" type="number" value={getCommonValue('height')} onChange={e => handlePropertyChange('height', Math.max(0, Number(e.target.value)))} onBlur={onCommit} disabled={multipleSelected || isSingleText}/>
+                            <Input id="height" type="number" value={getCommonValue('height')} onChange={e => handlePropertyChange('height', Math.max(0, Number(e.target.value)))} onFocus={handleInteractionStart} onBlur={handleInteractionEnd} disabled={multipleSelected || isSingleText}/>
                           </div>
                           <div className="col-span-2">
                             <Label htmlFor="rotation">Rotate</Label>
-                            <Input id="rotation" type="number" value={getCommonValue('rotation')} onChange={e => handlePropertyChange('rotation', e.target.value)} onBlur={onCommit} disabled={multipleSelected}/>
+                            <Input id="rotation" type="number" value={getCommonValue('rotation')} onChange={e => handlePropertyChange('rotation', e.target.value)} onFocus={handleInteractionStart} onBlur={handleInteractionEnd} disabled={multipleSelected}/>
                           </div>
                         </div>
                       </AccordionContent>
@@ -210,19 +220,19 @@ export function RightSidebar({
                                 {isSingleImage && (
                                     <div>
                                         <Label htmlFor="image-href">Image URL</Label>
-                                        <Input id="image-href" value={(shape as ImageShape).href || ''} onChange={e => handlePropertyChange('href', e.target.value)} onBlur={onCommit} />
+                                        <Input id="image-href" value={(shape as ImageShape).href || ''} onChange={e => handlePropertyChange('href', e.target.value)} onFocus={handleInteractionStart} onBlur={handleInteractionEnd} />
                                     </div>
                                 )}
                                 {isSingleSvg && (
                                     <div>
                                         <Label htmlFor="svg-string">SVG Content</Label>
-                                        <Textarea id="svg-string" value={(shape as SVGShape).svgString || ''} onChange={e => handlePropertyChange('svgString', e.target.value)} onBlur={onCommit} rows={6}/>
+                                        <Textarea id="svg-string" value={(shape as SVGShape).svgString || ''} onChange={e => handlePropertyChange('svgString', e.target.value)} onFocus={handleInteractionStart} onBlur={handleInteractionEnd} rows={6}/>
                                     </div>
                                 )}
                                 {isSinglePath && (
                                     <div>
                                         <Label htmlFor="path-d">Path Data</Label>
-                                        <Textarea id="path-d" value={(shape as PathShape).d || ''} onChange={e => handlePropertyChange('d', e.target.value)} onBlur={onCommit} rows={6}/>
+                                        <Textarea id="path-d" value={(shape as PathShape).d || ''} onChange={e => handlePropertyChange('d', e.target.value)} onFocus={handleInteractionStart} onBlur={handleInteractionEnd} rows={6}/>
                                     </div>
                                 )}
                             </div>
@@ -237,11 +247,11 @@ export function RightSidebar({
                                 <div className="space-y-4">
                                     <div>
                                         <Label htmlFor="text-content">Content</Label>
-                                        <Textarea id="text-content" value={(shape as TextShape).text || ''} onChange={e => handlePropertyChange('text', e.target.value)} onBlur={onCommit} rows={4}/>
+                                        <Textarea id="text-content" value={(shape as TextShape).text || ''} onChange={e => handlePropertyChange('text', e.target.value)} onFocus={handleInteractionStart} onBlur={handleInteractionEnd} rows={4}/>
                                     </div>
                                     <div>
                                         <Label htmlFor="font-size">Font Size</Label>
-                                        <Input id="font-size" type="number" min={1} value={(shape as TextShape).fontSize || 16} onChange={e => handlePropertyChange('fontSize', e.target.value)} onBlur={onCommit} />
+                                        <Input id="font-size" type="number" min={1} value={(shape as TextShape).fontSize || 16} onChange={e => handlePropertyChange('fontSize', e.target.value)} onFocus={handleInteractionStart} onBlur={handleInteractionEnd} />
                                     </div>
                                     <div>
                                         <Label htmlFor="font-family">Font Family</Label>
@@ -286,17 +296,17 @@ export function RightSidebar({
                                 <Label>{isSingleText ? 'Color' : 'Fill'}</Label>
                                 <div className="flex items-center gap-2">
                                   <Input type="color" value={String(getCommonValue('fill') ?? '#cccccc')} onChange={e => handlePropertyChange('fill', e.target.value, true)} className="p-1 h-8 w-8" />
-                                  <Input type="text" value={String(getCommonValue('fill') ?? '')} onChange={e => handlePropertyChange('fill', e.target.value)} onBlur={onCommit} placeholder={getCommonValue('fill') === 'Mixed' ? 'Mixed' : '#cccccc'} />
+                                  <Input type="text" value={String(getCommonValue('fill') ?? '')} onChange={e => handlePropertyChange('fill', e.target.value)} onFocus={handleInteractionStart} onBlur={handleInteractionEnd} placeholder={getCommonValue('fill') === 'Mixed' ? 'Mixed' : '#cccccc'} />
                                 </div>
                               </div>
                               {!isSingleText && (
                                 <div>
                                     <Label>Fill Opacity</Label>
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-2" onPointerDown={handleInteractionStart}>
                                     <Slider
                                         value={[getSliderValue('fillOpacity', 100, 100)]}
                                         onValueChange={([val]) => handlePropertyChange('fillOpacity', val / 100)}
-                                        onValueCommit={onCommit}
+                                        onValueCommit={handleInteractionEnd}
                                         max={100}
                                         step={1}
                                     />
@@ -311,11 +321,11 @@ export function RightSidebar({
                           {showOpacity && (
                              <div>
                                 <Label>Object Opacity</Label>
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2" onPointerDown={handleInteractionStart}>
                                   <Slider
                                     value={[getSliderValue('opacity', 100, 100)]}
                                     onValueChange={([val]) => handlePropertyChange('opacity', val / 100)}
-                                    onValueCommit={onCommit}
+                                    onValueCommit={handleInteractionEnd}
                                     max={100}
                                     step={1}
                                   />
@@ -329,11 +339,11 @@ export function RightSidebar({
                              <Separator/>
                               <div>
                                 <Label>Border Radius</Label>
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2" onPointerDown={handleInteractionStart}>
                                   <Slider
                                     value={[(shape as RectangleShape).borderRadius || 0]}
                                     onValueChange={([val]) => handlePropertyChange('borderRadius', val)}
-                                    onValueCommit={onCommit}
+                                    onValueCommit={handleInteractionEnd}
                                     max={Math.min(shape.width, shape.height) / 2}
                                     step={1}
                                   />
@@ -350,21 +360,21 @@ export function RightSidebar({
                                 <Label>{isSingleText ? 'Outline' : 'Stroke'}</Label>
                                 <div className="flex items-center gap-2">
                                   <Input type="color" value={String(getCommonValue('stroke') ?? '#000000')} onChange={e => handlePropertyChange('stroke', e.target.value, true)} className="p-1 h-8 w-8" />
-                                  <Input type="text" value={String(getCommonValue('stroke') ?? '')} onChange={e => handlePropertyChange('stroke', e.target.value)} onBlur={onCommit} placeholder={getCommonValue('stroke') === 'Mixed' ? 'Mixed' : '#000000'} />
+                                  <Input type="text" value={String(getCommonValue('stroke') ?? '')} onChange={e => handlePropertyChange('stroke', e.target.value)} onFocus={handleInteractionStart} onBlur={handleInteractionEnd} placeholder={getCommonValue('stroke') === 'Mixed' ? 'Mixed' : '#000000'} />
                                 </div>
                               </div>
                               <div>
                                 <Label htmlFor="stroke-width">{isSingleText ? 'Outline Width' : 'Stroke Width'}</Label>
-                                <Input id="stroke-width" type="number" value={String(getCommonValue('strokeWidth') ?? '0')} min={0} onChange={e => handlePropertyChange('strokeWidth', e.target.value)} onBlur={onCommit} />
+                                <Input id="stroke-width" type="number" value={String(getCommonValue('strokeWidth') ?? '0')} min={0} onChange={e => handlePropertyChange('strokeWidth', e.target.value)} onFocus={handleInteractionStart} onBlur={handleInteractionEnd} />
                               </div>
                               {!isSingleText && (
                                 <div>
                                     <Label>Stroke Opacity</Label>
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-2" onPointerDown={handleInteractionStart}>
                                     <Slider
                                         value={[getSliderValue('strokeOpacity', 100, 100)]}
                                         onValueChange={([val]) => handlePropertyChange('strokeOpacity', val / 100)}
-                                        onValueCommit={onCommit}
+                                        onValueCommit={handleInteractionEnd}
                                         max={100}
                                         step={1}
                                     />

@@ -74,7 +74,8 @@ export type InteractionState =
   | { type: 'rotating'; startX: number; startY: number; initialShapes: Shape[]; center: { x: number; y: number } }
   | { type: 'panning', startX: number, startY: number, initialPan: { x: number, y: number } }
   | { type: 'marquee', startX: number, startY: number }
-  | { type: 'brushing', currentShapeId: string, points: { x: number, y: number }[] };
+  | { type: 'brushing', currentShapeId: string, points: { x: number, y: number }[] }
+  | { type: 'editing' };
 
 export type CanvasView = {
   background: 'solid' | 'grid' | 'dots';

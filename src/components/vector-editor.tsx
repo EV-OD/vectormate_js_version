@@ -238,6 +238,7 @@ export function VectorEditor() {
           onReorder={reorderShapes}
           onExportSelection={handleExportSelection}
           onRename={renameShape}
+          setInteractionState={setInteractionState}
         />
       </div>
       {contextMenu && (
