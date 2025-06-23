@@ -1,44 +1,31 @@
 import { type Shape, PolygonShape } from './types';
 import { nanoid } from 'nanoid';
-import type { Clipper2ZFactoryFunction, MainModule } from 'clipper2-wasm';
+import type { Clipper2ZFactoryFunction, MainModule } from 'clipper2-wasm/dist/umd/clipper2z';
+
+// This is a dynamic import that points to the JS glue code in the /public folder.
+// We use a UMD build because it's the most compatible with this dynamic loading approach.
+import * as _Clipper2ZFactory from 'clipper2-wasm/dist/umd/clipper2z';
+
+const Clipper2ZFactory: Clipper2ZFactoryFunction = (_Clipper2ZFactory as any).default || _Clipper2ZFactory;
 
 // --- WASM Module Loader (Singleton Pattern) ---
 let wasmModulePromise: Promise<MainModule> | null = null;
 
 function initializeWasm(): Promise<MainModule> {
     if (typeof window === 'undefined') {
-        // Don't run on the server
         return Promise.reject(new Error("WASM module can only be loaded in the browser."));
     }
     if (wasmModulePromise) {
-        // Already loading or loaded
         return wasmModulePromise;
     }
-
     wasmModulePromise = new Promise((resolve, reject) => {
-        const script = document.createElement('script');
-        script.src = '/clipper2z.js'; // The UMD "glue" code from clipper2-wasm
-        script.onload = () => {
-            const Clipper2ZFactory: Clipper2ZFactoryFunction = (window as any).Clipper2ZFactory;
-            if (Clipper2ZFactory) {
-                Clipper2ZFactory({
-                    locateFile: () => '/clipper2z.wasm', // Path to the actual WASM file
-                }).then(resolve).catch(reject);
-            } else {
-                reject(new Error("Clipper2ZFactory not found. Make sure clipper2z.js is loaded."));
-            }
-        };
-        script.onerror = (err) => {
-            console.error("Failed to load Clipper2 WASM script.", err);
-            reject(new Error("Failed to load clipper2z.js"));
-        };
-        document.body.appendChild(script);
+        Clipper2ZFactory({
+            locateFile: () => '/clipper2z.wasm', // The actual WASM file in /public
+        }).then(resolve).catch(reject);
     });
-
     return wasmModulePromise;
 }
 
-// --- Shape Conversion Logic ---
 
 /**
  * Converts a shape into an array of world-space points, flattened for the WASM module.
@@ -76,7 +63,7 @@ function shapeToPoints(shape: Shape): number[] {
                 const angle = (i / segments) * 2 * Math.PI;
                 const x = cx + (shape.width / 2) * Math.cos(angle);
                 const y = cy + (shape.height / 2) * Math.sin(angle);
-                points.push({ x, y }); // No need to re-rotate a circle
+                points.push({ x, y });
             }
             break;
         case 'polygon':
@@ -90,35 +77,33 @@ function shapeToPoints(shape: Shape): number[] {
     return points.flatMap(p => [p.x, p.y]);
 }
 
-// --- Core WASM Operation ---
 async function performWasmOperation(shape1: Shape, shape2: Shape, opType: 'union' | 'subtract' | 'intersect' | 'exclude'): Promise<PolygonShape | null> {
     try {
         const wasmModule = await initializeWasm();
-        const { MakePath64, Paths64, ClipType, FillRule, Union64, Intersect64, Difference64, Xor64 } = wasmModule;
+        const { MakePathD, PathsD, ClipType, FillRule, UnionD, IntersectD, DifferenceD, XorD } = wasmModule;
 
         const subjectPoints = shapeToPoints(shape1);
         const clipPoints = shapeToPoints(shape2);
         
         if (subjectPoints.length < 6 || clipPoints.length < 6) return null; // must be a valid polygon
 
-        const subject = new Paths64();
-        subject.push_back(MakePath64(subjectPoints));
+        const subject = new PathsD();
+        subject.push_back(MakePathD(subjectPoints));
 
-        const clip = new Paths64();
-        clip.push_back(MakePath64(clipPoints));
+        const clip = new PathsD();
+        clip.push_back(MakePathD(clipPoints));
 
         const fillRule = FillRule.NonZero;
-        let opTypeEnum;
         let opFunction;
 
         switch (opType) {
-            case 'union': opTypeEnum = ClipType.Union; opFunction = Union64; break;
-            case 'subtract': opTypeEnum = ClipType.Difference; opFunction = Difference64; break;
-            case 'intersect': opTypeEnum = ClipType.Intersect; opFunction = Intersect64; break;
-            case 'exclude': opTypeEnum = ClipType.Xor; opFunction = Xor64; break;
+            case 'union': opFunction = UnionD; break;
+            case 'subtract': opFunction = DifferenceD; break;
+            case 'intersect': opFunction = IntersectD; break;
+            case 'exclude': opFunction = XorD; break;
         }
 
-        const solution = opFunction(subject, clip, fillRule);
+        const solution = opFunction(subject, clip, fillRule, 2);
         
         if (solution.size() === 0) {
             subject.delete();
