@@ -17,7 +17,9 @@ import {
   Layers, 
   Eclipse, 
   Star, 
-  Heart 
+  Heart,
+  Image,
+  FileCode
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -104,7 +106,7 @@ export function Toolbar({ activeTool, onToolSelect, onBooleanOperation, disabled
             </Tooltip>
             <DropdownMenuContent side="right">
               {shapeTools.map(({ name, icon: Icon, tooltip }) => (
-                <DropdownMenuItem key={name} onSelect={() => onToolSelect(name)}>
+                <DropdownMenuItem key={name} onSelect={() => onToolSelect(name as Tool)}>
                   <Icon className="mr-2 h-4 w-4" />
                   <span>{tooltip.split(' (')[0]}</span>
                 </DropdownMenuItem>
@@ -143,6 +145,41 @@ export function Toolbar({ activeTool, onToolSelect, onBooleanOperation, disabled
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
+        </div>
+        
+        <Separator className="my-4" />
+
+        <div className="flex flex-col gap-2">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant={activeTool === 'image' ? 'secondary' : 'ghost'}
+                size="icon"
+                onClick={() => onToolSelect('image')}
+                className={cn(activeTool === 'image' && 'text-primary ring-2 ring-primary/50')}
+              >
+                <Image className="w-5 h-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right">
+              <p>Image</p>
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant={activeTool === 'svg' ? 'secondary' : 'ghost'}
+                size="icon"
+                onClick={() => onToolSelect('svg')}
+                className={cn(activeTool === 'svg' && 'text-primary ring-2 ring-primary/50')}
+              >
+                <FileCode className="w-5 h-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right">
+              <p>SVG</p>
+            </TooltipContent>
+          </Tooltip>
         </div>
 
         <div className="mt-auto flex flex-col gap-4">

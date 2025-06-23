@@ -1,6 +1,6 @@
 'use client';
 
-export type ShapeType = 'rectangle' | 'circle' | 'polygon' | 'line';
+export type ShapeType = 'rectangle' | 'circle' | 'polygon' | 'line' | 'image' | 'svg';
 
 export type BaseShape = {
   id: string;
@@ -35,7 +35,17 @@ export interface LineShape extends BaseShape {
     type: 'line';
 }
 
-export type Shape = RectangleShape | CircleShape | PolygonShape | LineShape;
+export interface ImageShape extends BaseShape {
+  type: 'image';
+  href: string;
+}
+
+export interface SVGShape extends BaseShape {
+  type: 'svg';
+  svgString: string;
+}
+
+export type Shape = RectangleShape | CircleShape | PolygonShape | LineShape | ImageShape | SVGShape;
 
 export type Tool = 'select' | ShapeType;
 

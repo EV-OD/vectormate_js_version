@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { type Shape, RectangleShape } from '@/lib/types';
+import { type Shape, RectangleShape, ImageShape, SVGShape } from '@/lib/types';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -12,6 +12,7 @@ import { Separator } from './ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LayersPanel } from './layers-panel';
 import { ScrollArea } from './ui/scroll-area';
+import { Textarea } from './ui/textarea';
 
 type RightSidebarProps = {
   shapes: Shape[];
@@ -42,9 +43,14 @@ export function RightSidebar({
   const multipleSelected = selectedShapes.length > 1;
 
   const isSingleRectangle = selectedShapes.length === 1 && shape?.type === 'rectangle';
-  const showFillAndOpacity = selectedShapes.some(s => s.type !== 'line');
+  const isSingleImage = selectedShapes.length === 1 && shape?.type === 'image';
+  const isSingleSvg = selectedShapes.length === 1 && shape?.type === 'svg';
+  
+  const showFillAndStroke = selectedShapes.every(s => !['line', 'image', 'svg'].includes(s.type));
+  const showOpacity = selectedShapes.every(s => s.type !== 'line');
 
-  const handlePropertyChange = (prop: keyof Shape, value: any, commit: boolean = false) => {
+
+  const handlePropertyChange = (prop: keyof Shape | 'href' | 'svgString', value: any, commit: boolean = false) => {
     const updated = selectedShapes.map(s => {
       const newShape = { ...s };
 
@@ -71,7 +77,7 @@ export function RightSidebar({
     onShapesUpdate(updated, commit);
   };
   
-  const getCommonValue = (prop: keyof Shape): string | number => {
+  const getCommonValue = (prop: keyof Shape | 'href' | 'svgString'): string | number => {
     if (!shape) return '';
     const firstValue = (shape as any)[prop];
     if (multipleSelected) {
@@ -116,7 +122,7 @@ export function RightSidebar({
                     </Button>
                   </div>
 
-                  <Accordion type="multiple" defaultValue={['transform', 'appearance']} className="w-full">
+                  <Accordion type="multiple" defaultValue={['transform', 'content', 'appearance']} className="w-full">
                     <AccordionItem value="transform">
                       <AccordionTrigger>Transform</AccordionTrigger>
                       <AccordionContent>
@@ -145,11 +151,33 @@ export function RightSidebar({
                       </AccordionContent>
                     </AccordionItem>
                     
+                    {(isSingleImage || isSingleSvg) && (
+                      <AccordionItem value="content">
+                        <AccordionTrigger>Content</AccordionTrigger>
+                        <AccordionContent>
+                            <div className="space-y-4">
+                                {isSingleImage && (
+                                    <div>
+                                        <Label htmlFor="image-href">Image URL</Label>
+                                        <Input id="image-href" value={(shape as ImageShape).href || ''} onChange={e => handlePropertyChange('href', e.target.value)} onBlur={onCommit} />
+                                    </div>
+                                )}
+                                {isSingleSvg && (
+                                    <div>
+                                        <Label htmlFor="svg-string">SVG Content</Label>
+                                        <Textarea id="svg-string" value={(shape as SVGShape).svgString || ''} onChange={e => handlePropertyChange('svgString', e.target.value)} onBlur={onCommit} rows={6}/>
+                                    </div>
+                                )}
+                            </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    )}
+
                     <AccordionItem value="appearance">
                       <AccordionTrigger>Appearance</AccordionTrigger>
                       <AccordionContent>
                         <div className="space-y-4">
-                          {showFillAndOpacity && (
+                          {showFillAndStroke && (
                             <>
                               <div>
                                 <Label>Fill</Label>
@@ -158,7 +186,12 @@ export function RightSidebar({
                                   <Input type="text" value={String(getCommonValue('fill') ?? '')} onChange={e => handlePropertyChange('fill', e.target.value)} onBlur={onCommit} placeholder={getCommonValue('fill') === 'Mixed' ? 'Mixed' : '#cccccc'} />
                                 </div>
                               </div>
-                              <div>
+                              <Separator/>
+                            </>
+                          )}
+
+                          {showOpacity && (
+                             <div>
                                 <Label>Opacity</Label>
                                 <div className="flex items-center gap-2">
                                   <Slider
@@ -171,12 +204,11 @@ export function RightSidebar({
                                   <span className="text-sm text-muted-foreground w-12 text-right">{getCommonValue('opacity') === 'Mixed' ? 'Mixed' : `${Math.round(getSliderValue('opacity', 100, 100))}%`}</span>
                                 </div>
                               </div>
-                              <Separator/>
-                            </>
                           )}
 
                           {isSingleRectangle && (
                             <>
+                             <Separator/>
                               <div>
                                 <Label>Border Radius</Label>
                                 <div className="flex items-center gap-2">
@@ -190,21 +222,25 @@ export function RightSidebar({
                                   <span className="text-sm text-muted-foreground w-12 text-right">{Math.round((shape as RectangleShape).borderRadius || 0)}px</span>
                                 </div>
                               </div>
-                              <Separator />
                             </>
                           )}
                           
-                          <div>
-                            <Label>Stroke</Label>
-                            <div className="flex items-center gap-2">
-                              <Input type="color" value={String(getCommonValue('stroke') ?? '#000000')} onChange={e => handlePropertyChange('stroke', e.target.value, true)} className="p-1 h-8 w-8" />
-                              <Input type="text" value={String(getCommonValue('stroke') ?? '')} onChange={e => handlePropertyChange('stroke', e.target.value)} onBlur={onCommit} placeholder={getCommonValue('stroke') === 'Mixed' ? 'Mixed' : '#000000'} />
-                            </div>
-                          </div>
-                          <div>
-                            <Label htmlFor="stroke-width">Stroke Width</Label>
-                            <Input id="stroke-width" type="number" value={String(getCommonValue('strokeWidth') ?? '0')} min={0} onChange={e => handlePropertyChange('strokeWidth', e.target.value)} onBlur={onCommit} />
-                          </div>
+                          {showFillAndStroke && (
+                            <>
+                              <Separator />
+                              <div>
+                                <Label>Stroke</Label>
+                                <div className="flex items-center gap-2">
+                                  <Input type="color" value={String(getCommonValue('stroke') ?? '#000000')} onChange={e => handlePropertyChange('stroke', e.target.value, true)} className="p-1 h-8 w-8" />
+                                  <Input type="text" value={String(getCommonValue('stroke') ?? '')} onChange={e => handlePropertyChange('stroke', e.target.value)} onBlur={onCommit} placeholder={getCommonValue('stroke') === 'Mixed' ? 'Mixed' : '#000000'} />
+                                </div>
+                              </div>
+                              <div>
+                                <Label htmlFor="stroke-width">Stroke Width</Label>
+                                <Input id="stroke-width" type="number" value={String(getCommonValue('strokeWidth') ?? '0')} min={0} onChange={e => handlePropertyChange('strokeWidth', e.target.value)} onBlur={onCommit} />
+                              </div>
+                            </>
+                          )}
                         </div>
                       </AccordionContent>
                     </AccordionItem>

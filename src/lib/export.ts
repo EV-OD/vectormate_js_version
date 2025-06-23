@@ -1,19 +1,36 @@
-import { type Shape, type CanvasView, RectangleShape } from '@/lib/types';
+import { type Shape, type CanvasView, RectangleShape, ImageShape, SVGShape } from '@/lib/types';
 
 function shapeToSvgElement(shape: Shape): string {
-  const common_attrs = `transform="rotate(${shape.rotation} ${shape.x + shape.width / 2} ${shape.y + shape.height / 2})" fill="${shape.type === 'line' ? 'none' : (shape.fill || 'transparent')}" fill-opacity="${shape.opacity || 1}" stroke="${shape.stroke || 'none'}" stroke-width="${shape.strokeWidth || 0}"`;
+  const transform = `transform="rotate(${shape.rotation} ${shape.x + shape.width / 2} ${shape.y + shape.height / 2})"`;
   
   switch (shape.type) {
-    case 'rectangle':
+    case 'rectangle': {
       const rect = shape as RectangleShape;
-      return `<rect x="${rect.x}" y="${rect.y}" width="${rect.width}" height="${rect.height}" rx="${rect.borderRadius || 0}" ${common_attrs} />`;
-    case 'circle':
-      return `<ellipse cx="${shape.x + shape.width / 2}" cy="${shape.y + shape.height / 2}" rx="${shape.width / 2}" ry="${shape.height / 2}" ${common_attrs} />`;
-    case 'polygon':
-       const transform = `translate(${shape.x}, ${shape.y})`;
-       return `<polygon points="${shape.points}" transform="${transform} rotate(${shape.rotation} ${shape.width / 2} ${shape.height / 2})" fill="${shape.fill}" fill-opacity="${shape.opacity}" stroke="${shape.stroke || 'none'}" stroke-width="${shape.strokeWidth || 0}" />`;
-    case 'line':
-        return `<line x1="${shape.x}" y1="${shape.y}" x2="${shape.x + shape.width}" y2="${shape.y + shape.height}" ${common_attrs} />`;
+      const common_attrs = `fill="${rect.fill || 'transparent'}" fill-opacity="${rect.opacity || 1}" stroke="${rect.stroke || 'none'}" stroke-width="${rect.strokeWidth || 0}"`;
+      return `<rect x="${rect.x}" y="${rect.y}" width="${rect.width}" height="${rect.height}" rx="${rect.borderRadius || 0}" ${transform} ${common_attrs} />`;
+    }
+    case 'circle': {
+      const common_attrs = `fill="${shape.fill || 'transparent'}" fill-opacity="${shape.opacity || 1}" stroke="${shape.stroke || 'none'}" stroke-width="${shape.strokeWidth || 0}"`;
+      return `<ellipse cx="${shape.x + shape.width / 2}" cy="${shape.y + shape.height / 2}" rx="${shape.width / 2}" ry="${shape.height / 2}" ${transform} ${common_attrs} />`;
+    }
+    case 'polygon': {
+       const polyTransform = `translate(${shape.x}, ${shape.y})`;
+       const common_attrs = `fill="${shape.fill || 'transparent'}" fill-opacity="${shape.opacity || 1}" stroke="${shape.stroke || 'none'}" stroke-width="${shape.strokeWidth || 0}"`;
+       return `<polygon points="${shape.points}" transform="${polyTransform} rotate(${shape.rotation} ${shape.width / 2} ${shape.height / 2})" ${common_attrs} />`;
+    }
+    case 'line': {
+      const common_attrs = `fill="none" stroke="${shape.stroke || 'none'}" stroke-width="${shape.strokeWidth || 0}"`;
+      return `<line x1="${shape.x}" y1="${shape.y}" x2="${shape.x + shape.width}" y2="${shape.y + shape.height}" ${transform} ${common_attrs} />`;
+    }
+    case 'image': {
+      const imgShape = shape as ImageShape;
+      return `<image href="${imgShape.href}" x="${imgShape.x}" y="${imgShape.y}" width="${imgShape.width}" height="${imgShape.height}" ${transform} opacity="${imgShape.opacity || 1}" />`;
+    }
+    case 'svg': {
+      const svgShape = shape as SVGShape;
+      const svgHref = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svgShape.svgString)))}`;
+      return `<image href="${svgHref}" x="${svgShape.x}" y="${svgShape.y}" width="${svgShape.width}" height="${svgShape.height}" ${transform} opacity="${svgShape.opacity || 1}" />`;
+    }
   }
 }
 

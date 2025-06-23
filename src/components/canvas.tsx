@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { type Shape, type Tool, type InteractionState, type Handle, PolygonShape, ShapeType, CanvasView, RectangleShape } from '@/lib/types';
+import { type Shape, type Tool, type InteractionState, type Handle, PolygonShape, ShapeType, CanvasView, RectangleShape, ImageShape, SVGShape } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { getBounds, getHexagonPoints } from '@/lib/geometry';
 import { useCanvasInteractions } from '@/hooks/use-canvas-interactions';
@@ -105,17 +105,23 @@ export function Canvas(props: CanvasProps) {
             const commonProps: any = {
               'data-shape-id': rest.id,
               transform: `rotate(${rest.rotation} ${rest.x + rest.width / 2} ${rest.y + rest.height / 2})`,
-              stroke: rest.stroke,
-              strokeWidth: rest.strokeWidth,
               className: "transition-all duration-75"
             };
             
             if (rest.type !== 'line') {
-              commonProps.fill = rest.fill;
-              commonProps.fillOpacity = rest.opacity;
-            } else {
-              commonProps.fill = "none";
+              commonProps.opacity = rest.opacity ?? 1;
             }
+
+            if (rest.type === 'rectangle' || rest.type === 'circle' || rest.type === 'polygon') {
+              commonProps.fill = rest.fill;
+              commonProps.stroke = rest.stroke;
+              commonProps.strokeWidth = rest.strokeWidth;
+            } else if (rest.type === 'line') {
+              commonProps.fill = "none";
+              commonProps.stroke = rest.stroke;
+              commonProps.strokeWidth = rest.strokeWidth;
+            }
+
 
             switch (rest.type) {
               case 'rectangle':
@@ -129,6 +135,15 @@ export function Canvas(props: CanvasProps) {
               }
               case 'line': {
                   return <line key={rest.id} x1={rest.x} y1={rest.y} x2={rest.x + rest.width} y2={rest.y + rest.height} {...commonProps} />;
+              }
+              case 'image': {
+                const { href } = rest as ImageShape;
+                return <image key={rest.id} href={href} x={rest.x} y={rest.y} width={rest.width} height={rest.height} {...commonProps} />;
+              }
+              case 'svg': {
+                const { svgString } = rest as SVGShape;
+                const svgHref = `data:image/svg+xml;base64,${typeof window !== 'undefined' ? window.btoa(unescape(encodeURIComponent(svgString))) : ''}`;
+                return <image key={rest.id} href={svgHref} x={rest.x} y={rest.y} width={rest.width} height={rest.height} {...commonProps} />;
               }
             }
           })}
