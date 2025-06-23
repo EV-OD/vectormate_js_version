@@ -23,10 +23,11 @@ type CanvasProps = {
   canvasView: CanvasView;
   onViewChange: (view: Partial<CanvasView>) => void;
   isolationMode: string | null;
+  setIsolationMode: (id: string | null) => void;
 };
 
 export function Canvas(props: CanvasProps) {
-  const { shapes, selectedShapeIds, interactionState, canvasView } = props;
+  const { shapes, selectedShapeIds, interactionState, canvasView, isolationMode, setIsolationMode } = props;
 
   const {
     svgRef,
@@ -38,7 +39,11 @@ export function Canvas(props: CanvasProps) {
     handleMouseUp,
     handleContextMenu,
     handleWheel
-  } = useCanvasInteractions(props);
+  } = useCanvasInteractions({
+      ...props,
+      isolationMode,
+      setIsolationMode
+  });
 
   const shapesToRender = useMemo(() => {
     const draftIds = new Set(draftShapes.map(d => d.id));

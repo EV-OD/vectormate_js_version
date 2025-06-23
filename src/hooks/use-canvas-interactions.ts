@@ -21,6 +21,7 @@ type UseCanvasInteractionsProps = {
   canvasView: CanvasView;
   onViewChange: (view: Partial<CanvasView>) => void;
   isolationMode: string | null;
+  setIsolationMode: (id: string | null) => void;
 };
 
 export function useCanvasInteractions({
@@ -38,6 +39,7 @@ export function useCanvasInteractions({
   canvasView,
   onViewChange,
   isolationMode,
+  setIsolationMode,
 }: UseCanvasInteractionsProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [activeSnapLines, setActiveSnapLines] = useState<{ vertical: number[], horizontal: number[] }>({ vertical: [], horizontal: [] });
@@ -163,50 +165,45 @@ export function useCanvasInteractions({
                 const clickedShape = shapes.find(s => s.id === shapeId);
                 if (!clickedShape) return;
 
-                const isAlreadySelected = selectedShapeIds.includes(shapeId);
-                let newSelectedIds: string[];
-
-                if (isolationMode) {
-                    if (clickedShape.groupId !== isolationMode) {
-                        setSelectedShapeIds([]);
-                        return;
-                    }
-                    if (e.shiftKey) {
-                        newSelectedIds = isAlreadySelected ? selectedShapeIds.filter(id => id !== shapeId) : [...selectedShapeIds, shapeId];
-                    } else {
-                        if (!isAlreadySelected) {
-                            newSelectedIds = [shapeId];
-                        } else {
-                            newSelectedIds = selectedShapeIds;
-                        }
-                    }
-                } else {
-                    const groupId = clickedShape.groupId;
-                    const idsToModify = groupId ? shapes.filter(s => s.groupId === groupId).map(s => s.id) : [shapeId];
-                    const isGroupFullySelected = idsToModify.every(id => selectedShapeIds.includes(id));
-                    
-                    if (e.shiftKey) {
-                        if (isGroupFullySelected) {
-                            newSelectedIds = selectedShapeIds.filter(id => !idsToModify.includes(id));
-                        } else {
-                            newSelectedIds = [...new Set([...selectedShapeIds, ...idsToModify])];
-                        }
-                    } else {
-                        if (!isAlreadySelected) {
-                            newSelectedIds = idsToModify;
-                        } else {
-                            newSelectedIds = selectedShapeIds;
-                        }
-                    }
+                // If in isolation mode, and user clicks outside the isolated group, exit isolation mode.
+                if (isolationMode && clickedShape.groupId !== isolationMode) {
+                    setIsolationMode(null);
+                    setSelectedShapeIds([]);
+                    return;
                 }
                 
-                setSelectedShapeIds(newSelectedIds);
-                const movingShapes = shapes.filter(s => newSelectedIds.includes(s.id));
+                const isIsolated = isolationMode === clickedShape.groupId;
+                // A "selection unit" is either a single shape, or a whole group.
+                const selectionUnitIds = (clickedShape.groupId && !isIsolated) 
+                    ? shapes.filter(s => s.groupId === clickedShape.groupId).map(s => s.id)
+                    : [shapeId];
+
+                const isUnitSelected = selectionUnitIds.every(id => selectedShapeIds.includes(id));
+                let newSelectedIds = [...selectedShapeIds];
+
+                if (e.shiftKey) {
+                    if (isUnitSelected) {
+                        newSelectedIds = newSelectedIds.filter(id => !selectionUnitIds.includes(id));
+                    } else {
+                        newSelectedIds.push(...selectionUnitIds);
+                    }
+                } else if (!isUnitSelected) {
+                    newSelectedIds = selectionUnitIds;
+                }
+                
+                const finalIds = [...new Set(newSelectedIds)];
+                setSelectedShapeIds(finalIds);
+
+                const movingShapes = shapes.filter(s => finalIds.includes(s.id));
                 setDraftShapes(movingShapes);
                 setInteractionState({ type: 'moving', startX: x, startY: y, initialShapes: movingShapes });
+
             } else { // Background click
                 if (!e.ctrlKey) {
                     setSelectedShapeIds([]);
+                    if (isolationMode) {
+                        setIsolationMode(null);
+                    }
                 }
             }
         }
@@ -303,7 +300,7 @@ export function useCanvasInteractions({
       setDraftShapes([newShape]);
       setInteractionState({ type: 'drawing', shapeType: activeTool, startX: x, startY: y, currentShapeId: newShape.id });
     }
-  }, [getMousePosition, activeTool, shapes, selectedShapeIds, canvasView, getScreenPosition, setContextMenu, setInteractionState, setSelectedShapeIds, addShape, setActiveTool, isolationMode]);
+  }, [getMousePosition, activeTool, shapes, selectedShapeIds, canvasView, getScreenPosition, setContextMenu, setInteractionState, setSelectedShapeIds, addShape, setActiveTool, isolationMode, setIsolationMode]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (interactionState.type === 'none') return;
@@ -767,7 +764,7 @@ export function useCanvasInteractions({
         
         if (!isAlreadySelected) {
             const clickedShape = shapes.find(s => s.id === shapeId);
-            if (clickedShape?.groupId) {
+            if (clickedShape?.groupId && !isolationMode) {
                  setSelectedShapeIds(shapes.filter(s => s.groupId === clickedShape.groupId).map(s => s.id));
             } else {
                 setSelectedShapeIds([shapeId]);
@@ -781,7 +778,7 @@ export function useCanvasInteractions({
     } else {
         setContextMenu(null);
     }
-  }, [shapes, selectedShapeIds, setSelectedShapeIds, setContextMenu]);
+  }, [shapes, selectedShapeIds, setSelectedShapeIds, setContextMenu, isolationMode]);
   
   const handleWheel = useCallback((e: React.WheelEvent) => {
     if ((e.target as HTMLElement).closest('aside, header')) {

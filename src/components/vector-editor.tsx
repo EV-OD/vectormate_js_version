@@ -217,6 +217,7 @@ export function VectorEditor() {
             canvasView={canvasView}
             onViewChange={handleViewChange}
             isolationMode={isolationMode}
+            setIsolationMode={setIsolationMode}
           />
         </main>
         <RightSidebar
