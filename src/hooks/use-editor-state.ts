@@ -392,9 +392,17 @@ export function useEditorState() {
         const newShapes = current.shapes.map(s => {
             if (s.groupId === shape.groupId) {
                 const { groupId, isClippingMask, clippedBy, strokeDasharray, ...rest } = s;
+                
+                // If this is the shape that was the mask, reset its appearance to default
                 if(maskShape && s.id === maskShape.id) {
-                    return { ...rest, fill: maskShape.fill || '#cccccc', stroke: maskShape.stroke || 'none', strokeWidth: maskShape.strokeWidth || 0 } as Shape;
+                    return { 
+                        ...rest, 
+                        fill: '#cccccc', // Default fill
+                        stroke: 'none', // No stroke
+                        strokeWidth: 0, // No stroke width
+                    } as Shape;
                 }
+                // For other shapes in the group (the content), just remove clipping properties
                 return rest as Shape;
             }
             return s;
