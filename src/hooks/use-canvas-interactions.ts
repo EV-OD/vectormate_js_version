@@ -4,7 +4,7 @@
 import React, { useRef, useState, useCallback } from 'react';
 import { type Shape, type Tool, type InteractionState, type Handle, PolygonShape, ShapeType, CanvasView, ImageShape, SVGShape, PathShape } from '@/lib/types';
 import { nanoid } from 'nanoid';
-import { getBounds, getHexagonPoints, scalePolygonPoints } from '@/lib/geometry';
+import { getBounds, getHexagonPoints, scalePolygonPoints, scalePathData } from '@/lib/geometry';
 import { SNAP_THRESHOLD } from '@/lib/constants';
 
 type UseCanvasInteractionsProps = {
@@ -391,6 +391,14 @@ export function useCanvasInteractions({
                         updatedShape.width,
                         updatedShape.height
                     );
+                } else if (updatedShape.type === 'path') {
+                    updatedShape.d = scalePathData(
+                        (initialShape as PathShape).d,
+                        initialShape.width,
+                        initialShape.height,
+                        updatedShape.width,
+                        updatedShape.height
+                    );
                 }
                 setDraftShapes([updatedShape]);
 
@@ -437,6 +445,14 @@ export function useCanvasInteractions({
                 if (updatedShape.type === 'polygon') {
                      updatedShape.points = scalePolygonPoints(
                         (initialShape as PolygonShape).points,
+                        initialShape.width,
+                        initialShape.height,
+                        newWidth,
+                        newHeight
+                    );
+                } else if (updatedShape.type === 'path') {
+                    updatedShape.d = scalePathData(
+                        (initialShape as PathShape).d,
                         initialShape.width,
                         initialShape.height,
                         newWidth,
@@ -552,7 +568,7 @@ export function useCanvasInteractions({
                 const width = 50, height = 50;
                 let updatedShape: Shape = {...lastDrawnShape, width: width, height: height, x: lastDrawnShape.x - 25, y: lastDrawnShape.y - 25}
                 if (updatedShape.type === 'polygon') {
-                    (updatedProps as PolygonShape).points = getHexagonPoints(width, height);
+                    (updatedShape as PolygonShape).points = getHexagonPoints(width, height);
                 } else if (updatedShape.type === 'line') {
                     updatedShape.height = 0;
                 }

@@ -1,4 +1,4 @@
-import { type Shape } from '@/lib/types';
+import { type Shape, PathShape } from '@/lib/types';
 
 export function getHexagonPoints(width: number, height: number): string {
     const cx = width / 2;
@@ -33,6 +33,21 @@ export function scalePolygonPoints(pointsStr: string, oldWidth: number, oldHeigh
     }));
 
     return scaledPoints.map(p => `${p.x},${p.y}`).join(' ');
+}
+
+export function scalePathData(d: string, oldWidth: number, oldHeight: number, newWidth: number, newHeight: number): string {
+    if (oldWidth === 0 || oldHeight === 0) return d;
+
+    const scaleX = newWidth / oldWidth;
+    const scaleY = newHeight / oldHeight;
+
+    const commandRegex = /([ML])\s*([\d.-]+)\s*([\d.-]+)/gi;
+    
+    return d.replace(commandRegex, (match, command, x, y) => {
+        const scaledX = (parseFloat(x) * scaleX).toFixed(2);
+        const scaledY = (parseFloat(y) * scaleY).toFixed(2);
+        return `${command} ${scaledX} ${scaledY}`;
+    });
 }
 
 export const getBounds = (shapes: Shape[]) => {

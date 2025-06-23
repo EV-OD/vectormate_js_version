@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LayersPanel } from './layers-panel';
 import { ScrollArea } from './ui/scroll-area';
 import { Textarea } from './ui/textarea';
-import { scalePolygonPoints } from '@/lib/geometry';
+import { scalePolygonPoints, scalePathData } from '@/lib/geometry';
 
 type RightSidebarProps = {
   shapes: Shape[];
@@ -69,16 +69,17 @@ export function RightSidebar({
         const numValue = Number(value);
         if (!isNaN(numValue)) {
             if ((prop === 'width' || prop === 'height')) {
-                if (newShape.type === 'path') return s; // Disable resizing path from inputs
-                
-                if (newShape.type === 'polygon') {
-                    const oldWidth = newShape.width;
-                    const oldHeight = newShape.height;
-                    const newWidth = prop === 'width' ? numValue : oldWidth;
-                    const newHeight = prop === 'height' ? numValue : oldHeight;
+                const oldWidth = newShape.width;
+                const oldHeight = newShape.height;
+                const newWidth = prop === 'width' ? numValue : oldWidth;
+                const newHeight = prop === 'height' ? numValue : oldHeight;
 
+                if (newShape.type === 'polygon') {
                     const originalPoints = (s as PolygonShape).points;
                     (newShape as PolygonShape).points = scalePolygonPoints(originalPoints, oldWidth, oldHeight, newWidth, newHeight);
+                } else if (newShape.type === 'path') {
+                    const originalD = (s as PathShape).d;
+                    (newShape as PathShape).d = scalePathData(originalD, oldWidth, oldHeight, newWidth, newHeight);
                 }
             }
             (newShape as any)[prop] = numValue;
@@ -153,11 +154,11 @@ export function RightSidebar({
                           </div>
                           <div>
                             <Label htmlFor="width">W</Label>
-                            <Input id="width" type="number" value={getCommonValue('width')} onChange={e => handlePropertyChange('width', Math.max(0, Number(e.target.value)))} onBlur={onCommit} disabled={multipleSelected || isSinglePath}/>
+                            <Input id="width" type="number" value={getCommonValue('width')} onChange={e => handlePropertyChange('width', Math.max(0, Number(e.target.value)))} onBlur={onCommit} disabled={multipleSelected}/>
                           </div>
                           <div>
                             <Label htmlFor="height">H</Label>
-                            <Input id="height" type="number" value={getCommonValue('height')} onChange={e => handlePropertyChange('height', Math.max(0, Number(e.target.value)))} onBlur={onCommit} disabled={multipleSelected || isSinglePath}/>
+                            <Input id="height" type="number" value={getCommonValue('height')} onChange={e => handlePropertyChange('height', Math.max(0, Number(e.target.value)))} onBlur={onCommit} disabled={multipleSelected}/>
                           </div>
                           <div className="col-span-2">
                             <Label htmlFor="rotation">Rotate</Label>
