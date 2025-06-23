@@ -134,7 +134,7 @@ export function Canvas({
               initialShapes: initialShapes,
               aspectRatios: initialShapes.map(s => s.height === 0 ? 1 : s.width / s.height),
             });
-        } else if (shapeId) {
+        } else if (shapeId && shapeId !== 'background') {
             const isSelected = selectedShapeIds.includes(shapeId);
             const newSelectedIds = e.shiftKey
                 ? (isSelected ? selectedShapeIds.filter(id => id !== shapeId) : [...selectedShapeIds, shapeId])
