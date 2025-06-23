@@ -130,7 +130,7 @@ export function Canvas({
             'data-shape-id': shape.id,
             transform: `rotate(${shape.rotation} ${shape.x + shape.width / 2} ${shape.y + shape.height / 2})`,
             fill: shape.fill,
-            'fill-opacity': shape.opacity,
+            fillOpacity: shape.opacity,
             className: "transition-all duration-75"
           };
           switch (shape.type) {
