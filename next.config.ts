@@ -1,7 +1,10 @@
-import type {NextConfig} from 'next';
+import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  output: 'export', // ensures static export
+  basePath: '/vectormate_js_version', // always use GH Pages subpath
+  assetPrefix: '/vectormate_js_version/', // always use GH Pages assets
+
   typescript: {
     ignoreBuildErrors: true,
   },
