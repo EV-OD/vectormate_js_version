@@ -2,13 +2,10 @@ import { type Shape, PolygonShape } from './types';
 import { nanoid } from 'nanoid';
 import type { Clipper2ZFactoryFunction, MainModule } from 'clipper2-wasm/dist/umd/clipper2z';
 
-// This is a dynamic import that points to the JS glue code in the /public folder.
-// We use a UMD build because it's the most compatible with this dynamic loading approach.
 import * as _Clipper2ZFactory from 'clipper2-wasm/dist/umd/clipper2z';
 
 const Clipper2ZFactory: Clipper2ZFactoryFunction = (_Clipper2ZFactory as any).default || _Clipper2ZFactory;
 
-// --- WASM Module Loader (Singleton Pattern) ---
 let wasmModulePromise: Promise<MainModule> | null = null;
 
 function initializeWasm(): Promise<MainModule> {
@@ -125,7 +122,6 @@ async function performWasmOperation(shape1: Shape, shape2: Shape, opType: 'union
             maxY = Math.max(maxY, p.y);
         }
 
-        // --- Memory Cleanup ---
         subject.delete();
         clip.delete();
         solution.delete();

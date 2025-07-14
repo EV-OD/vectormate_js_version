@@ -39,7 +39,6 @@ export function CropDialog({ shape, onClose, onSave }: CropDialogProps) {
   const handleSave = () => {
     if (crop && imgRef.current) {
       const img = imgRef.current;
-      // Scale crop coordinates from display size to natural size
       const scaleX = img.naturalWidth / img.width;
       const scaleY = img.naturalHeight / img.height;
       onSave({

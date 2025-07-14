@@ -214,7 +214,6 @@ export function LayersPanel({
         )
     }
     
-    // Normal shape rendering
     const shape = item;
      return (
         <div

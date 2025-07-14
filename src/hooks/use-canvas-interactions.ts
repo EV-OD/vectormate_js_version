@@ -68,7 +68,7 @@ export function useCanvasInteractions({
     let snappedY = y;
     const newActiveSnapLines: { vertical: number[]; horizontal: number[] } = { vertical: [], horizontal: [] };
     const snapThresholdWithZoom = SNAP_THRESHOLD / canvasView.scale;
-    const allShapes = [...shapes, ...draftShapes]; // Snap against all visible shapes
+    const allShapes = [...shapes, ...draftShapes];
 
     if (canvasView.snapToObjects) {
         const staticShapes = allShapes.filter(s => !ignoreIds.includes(s.id));
@@ -119,7 +119,7 @@ export function useCanvasInteractions({
     const pos = getMousePosition(e);
     const target = e.target as SVGElement;
     
-    if (activeTool === 'pan' || (e.button === 1)) { // Pan on middle mouse button
+    if (activeTool === 'pan' || (e.button === 1)) {
         e.stopPropagation();
         const screenPos = getScreenPosition(e);
         setInteractionState({ type: 'panning', startX: screenPos.x, startY: screenPos.y, initialPan: canvasView.pan });
@@ -198,7 +198,7 @@ export function useCanvasInteractions({
                 setDraftShapes(movingShapes);
                 setInteractionState({ type: 'moving', startX: x, startY: y, initialShapes: movingShapes });
 
-            } else { // Background click
+            } else {
                 if (!e.ctrlKey) {
                     setSelectedShapeIds([]);
                     if (isolationMode) {
@@ -440,7 +440,7 @@ export function useCanvasInteractions({
                 let { x: sx, y: sy } = getMousePosition(e);
                 const snappedDx = sx - interactionState.startX;
                 const oldWidth = initialShape.width;
-                let newWidth = oldWidth + snappedDx; // Simplified: only scale based on horizontal drag from an edge
+                let newWidth = oldWidth + snappedDx;
                 
                 if (oldWidth > 0) {
                     const scaleFactor = newWidth / oldWidth;
@@ -482,11 +482,11 @@ export function useCanvasInteractions({
                     const changedWidth = newBounds.width !== initialShape.width;
                     const changedHeight = newBounds.height !== initialShape.height;
 
-                    if (changedWidth && !changedHeight) { // e.g., 'e', 'w'
+                    if (changedWidth && !changedHeight) {
                         newBounds.height = newBounds.width / aspectRatio;
-                    } else if (!changedWidth && changedHeight) { // e.g., 'n', 's'
+                    } else if (!changedWidth && changedHeight) {
                         newBounds.width = newBounds.height * aspectRatio;
-                    } else { // Corner handles
+                    } else {
                         if (newAspectRatio > aspectRatio) {
                             newBounds.width = newBounds.height * aspectRatio;
                         } else {

@@ -66,7 +66,6 @@ export function Toolbar({
     <aside className="w-16 flex flex-col items-center py-4 border-r bg-card text-card-foreground shrink-0">
       <TooltipProvider delayDuration={100}>
         <div className="flex flex-col gap-2">
-          {/* Select Tool */}
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -83,7 +82,6 @@ export function Toolbar({
             </TooltipContent>
           </Tooltip>
 
-          {/* Pan Tool */}
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -100,7 +98,6 @@ export function Toolbar({
             </TooltipContent>
           </Tooltip>
 
-          {/* Shape Tools Dropdown */}
           <DropdownMenu>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -164,7 +161,6 @@ export function Toolbar({
         <Separator className="my-4" />
 
         <div className="flex flex-col gap-2">
-          {/* Boolean Operations Dropdown */}
           <DropdownMenu>
             <Tooltip>
               <TooltipTrigger asChild>

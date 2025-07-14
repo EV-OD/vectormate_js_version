@@ -63,7 +63,6 @@ export function Canvas(props: CanvasProps) {
         return { bounds, resizable: true, rotatable, rotation: shape.rotation };
     } else {
         const bounds = getBounds(activeShapes);
-        // Resizing multiple objects, especially rotated ones, is complex. Disable for now.
         return { bounds, resizable: false, rotatable, rotation: 0 };
     }
   }, [shapes, draftShapes, selectedShapeIds]);
