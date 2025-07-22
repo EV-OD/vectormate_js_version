@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { Sparkles } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 type PromptBarProps = {
     onPromptSubmit: (prompt: string) => void;
@@ -30,7 +31,7 @@ export function PromptBar({ onPromptSubmit, disabled }: PromptBarProps) {
                     boxShadow: `0 0 8px hsl(var(--primary)/.3), 0 0 20px hsl(var(--primary)/.2), inset 0 0 1px 1px hsl(var(--border))`
                 }}
             >
-                <Sparkles className="w-5 h-5 text-primary/80" />
+                <Sparkles className={cn("w-5 h-5 text-primary/80", disabled && "animate-pulse")} />
                 <Input
                     type="text"
                     placeholder="Describe what you want to create..."
@@ -45,7 +46,7 @@ export function PromptBar({ onPromptSubmit, disabled }: PromptBarProps) {
                     className="w-9 h-9 rounded-full" 
                     disabled={disabled || !prompt.trim()}
                 >
-                    <Sparkles className="w-5 h-5" />
+                    <Sparkles className={cn("w-5 h-5", disabled && "animate-pulse")} />
                 </Button>
             </form>
         </div>

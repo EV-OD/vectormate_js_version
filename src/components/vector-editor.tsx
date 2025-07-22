@@ -43,6 +43,7 @@ export function VectorEditor() {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; shapeId: string } | null>(null);
   const [croppingImageId, setCroppingImageId] = useState<string | null>(null);
   const [isolationMode, setIsolationMode] = useState<string | null>(null);
+  const [isAiLoading, setIsAiLoading] = useState(false);
   
   const [canvasView, setCanvasView] = useState<CanvasView>({
     background: 'grid',
@@ -191,6 +192,10 @@ export function VectorEditor() {
   const handleAIPrompt = useCallback(async (prompt: string) => {
     // This is a dummy function that will be replaced with real AI logic.
     console.log(`[AI DUMMY PROMPT] Received: "${prompt}"`);
+    setIsAiLoading(true);
+
+    // Simulate AI delay
+    await new Promise(resolve => setTimeout(resolve, 1500));
 
     const newShape: Shape = {
         id: nanoid(),
@@ -208,6 +213,7 @@ export function VectorEditor() {
     };
     
     addShape(newShape);
+    setIsAiLoading(false);
   }, [addShape]);
 
   const isSingleImageSelected = selectedShapes.length === 1 && selectedShapes[0].type === 'image';
@@ -243,7 +249,7 @@ export function VectorEditor() {
             isolationMode={isolationMode}
             setIsolationMode={setIsolationMode}
           />
-          <PromptBar onPromptSubmit={handleAIPrompt} />
+          <PromptBar onPromptSubmit={handleAIPrompt} disabled={isAiLoading} />
         </main>
         <RightSidebar
           shapes={shapes}
