@@ -31,7 +31,7 @@ export function PromptBar({ onPromptSubmit, disabled }: PromptBarProps) {
                     boxShadow: `0 0 8px hsl(var(--primary)/.3), 0 0 20px hsl(var(--primary)/.2), inset 0 0 1px 1px hsl(var(--border))`
                 }}
             >
-                <Sparkles className={cn("w-5 h-5 text-primary/80", disabled && "animate-pulse")} />
+                <Sparkles className={cn("w-5 h-5 text-primary/80", disabled && "animate-neon-pulse")} />
                 <Input
                     type="text"
                     placeholder="Describe what you want to create..."
@@ -46,7 +46,7 @@ export function PromptBar({ onPromptSubmit, disabled }: PromptBarProps) {
                     className="w-9 h-9 rounded-full" 
                     disabled={disabled || !prompt.trim()}
                 >
-                    <Sparkles className={cn("w-5 h-5", disabled && "animate-pulse")} />
+                    <Sparkles className={cn("w-5 h-5", disabled && "animate-neon-pulse")} />
                 </Button>
             </form>
         </div>
