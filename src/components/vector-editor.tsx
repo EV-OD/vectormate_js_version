@@ -13,6 +13,7 @@ import { useKeyboardAndClipboard } from '@/hooks/use-keyboard-and-clipboard';
 import { CropDialog } from './crop-dialog';
 import { PromptBar } from './prompt-bar';
 import { nanoid } from 'nanoid';
+import { simpleFlow } from '@/ai/flows/simple-flow';
 
 export function VectorEditor() {
   const {
@@ -187,31 +188,18 @@ export function VectorEditor() {
   };
   
   const handleAIPrompt = useCallback(async (prompt: string) => {
-    // This is a dummy function that will be replaced with real AI logic.
-    console.log(`[AI DUMMY PROMPT] Received: "${prompt}"`);
     setIsAiLoading(true);
-
-    // Simulate AI delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
-
-    const newShape: Shape = {
-        id: nanoid(),
-        type: 'rectangle',
-        name: `AI: ${prompt}`,
-        x: Math.random() * 300 + 50,
-        y: Math.random() * 300 + 50,
-        width: 200,
-        height: 100,
-        fill: '#5555ff',
-        stroke: '#ffffff',
-        strokeWidth: 2,
-        rotation: 0,
-        opacity: 1,
-    };
-    
-    addShape(newShape);
-    setIsAiLoading(false);
-  }, [addShape]);
+    try {
+      const result = await simpleFlow(prompt);
+      alert(`AI Response: ${result}`);
+      console.log(`AI Response: ${result}`);
+    } catch (error) {
+      console.error("AI flow failed:", error);
+      alert("An error occurred while processing the AI prompt.");
+    } finally {
+      setIsAiLoading(false);
+    }
+  }, []);
 
   const isSingleImageSelected = selectedShapes.length === 1 && selectedShapes[0].type === 'image';
   const canCreateClippingMask = selectedShapeIds.length === 2 && !selectedShapes.some(s => s.groupId);
