@@ -11,6 +11,7 @@ import { ContextMenu } from './context-menu';
 import { useEditorState } from '@/hooks/use-editor-state';
 import { useKeyboardAndClipboard } from '@/hooks/use-keyboard-and-clipboard';
 import { CropDialog } from './crop-dialog';
+import { PromptBar } from './prompt-bar';
 
 export function VectorEditor() {
   const {
@@ -219,6 +220,7 @@ export function VectorEditor() {
             isolationMode={isolationMode}
             setIsolationMode={setIsolationMode}
           />
+          <PromptBar />
         </main>
         <RightSidebar
           shapes={shapes}
