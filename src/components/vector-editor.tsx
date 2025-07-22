@@ -14,6 +14,7 @@ import { CropDialog } from './crop-dialog';
 import { PromptBar } from './prompt-bar';
 import { nanoid } from 'nanoid';
 import { simpleFlow } from '@/ai/flows/simple-flow';
+import { useToast } from '@/hooks/use-toast';
 
 export function VectorEditor() {
   const {
@@ -46,6 +47,8 @@ export function VectorEditor() {
   const [isolationMode, setIsolationMode] = useState<string | null>(null);
   const [isAiLoading, setIsAiLoading] = useState(false);
   
+  const { toast } = useToast();
+
   const [canvasView, setCanvasView] = useState<CanvasView>({
     background: 'grid',
     gridSize: 20,
@@ -191,15 +194,19 @@ export function VectorEditor() {
     setIsAiLoading(true);
     try {
       const result = await simpleFlow(prompt);
-      alert(`AI Response: ${result}`);
+      toast({ title: "AI Response", description: result });
       console.log(`AI Response: ${result}`);
     } catch (error) {
       console.error("AI flow failed:", error);
-      alert("An error occurred while processing the AI prompt.");
+      toast({
+        title: "AI Error",
+        description: "An error occurred while processing the AI prompt.",
+        variant: "destructive",
+      });
     } finally {
       setIsAiLoading(false);
     }
-  }, []);
+  }, [toast]);
 
   const isSingleImageSelected = selectedShapes.length === 1 && selectedShapes[0].type === 'image';
   const canCreateClippingMask = selectedShapeIds.length === 2 && !selectedShapes.some(s => s.groupId);

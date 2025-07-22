@@ -1,6 +1,6 @@
 'use server';
 /**
- * @fileOverview A simple AI flow for responding to user prompts.
+ * @fileOverview A simple AI flow for responding to user prompts using Dotprompt.
  *
  * - simpleFlow - A function that handles a simple user prompt.
  */
@@ -8,7 +8,8 @@ import {ai} from '@/ai/genkit';
 import {z} from 'zod';
 
 // Define the tool that the AI can decide to use.
-const getGreetingMessageTool = ai.defineTool(
+// This is referenced by name in the .prompt file.
+export const getGreetingMessageTool = ai.defineTool(
   {
     name: 'getGreetingMessage',
     description: 'Get a friendly greeting message for the given name.',
@@ -22,13 +23,8 @@ const getGreetingMessageTool = ai.defineTool(
   }
 );
 
-// Define the prompt that will be sent to the AI.
-// We provide it with the tool we defined above.
-const simplePrompt = ai.definePrompt({
-  name: 'simplePrompt',
-  system: 'You are a friendly assistant in a vector editor app. Greet the user if they provide their name.',
-  tools: [getGreetingMessageTool],
-});
+// Load the prompt from the .prompt file.
+const simpleDotPrompt = ai.prompt('simple');
 
 /**
  * The main flow function that the client will call.
@@ -42,9 +38,12 @@ export const simpleFlow = ai.defineFlow(
   },
   async (prompt) => {
     console.log(`[AI FLOW INPUT] "${prompt}"`);
-    
+
     // Send the prompt and tools to the AI model.
-    const llmResponse = await simplePrompt({prompt});
+    const llmResponse = await simpleDotPrompt({
+        prompt: prompt,
+        tools: [getGreetingMessageTool] // Provide the tool implementation
+    });
 
     // Log the full response for debugging.
     console.log('[AI RESPONSE]', JSON.stringify(llmResponse, null, 2));

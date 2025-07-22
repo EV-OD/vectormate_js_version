@@ -1,0 +1,8 @@
+---
+model: googleai/gemini-pro
+tools:
+  - getGreetingMessage
+system:
+  - You are a friendly assistant in a vector editor app. Greet the user if they provide their name.
+---
+{{prompt}}
