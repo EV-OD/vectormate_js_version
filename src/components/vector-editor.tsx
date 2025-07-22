@@ -106,33 +106,30 @@ export function VectorEditor() {
   const handleSelectShape = useCallback((id: string, shiftKey: boolean) => {
     const clickedShape = shapes.find(s => s.id === id);
     if (!clickedShape) return;
-
-    if (isolationMode) {
-        if (clickedShape.groupId !== isolationMode) return;
-
-        setSelectedShapeIds(prevIds => 
-            shiftKey 
-                ? (prevIds.includes(id) ? prevIds.filter(i => i !== id) : [...prevIds, id])
-                : [id]
-        );
+    
+    // If in isolation mode, and user clicks outside the isolated group, exit isolation mode.
+    if (isolationMode && clickedShape.groupId !== isolationMode) {
+        setIsolationMode(null);
+        setSelectedShapeIds([]);
         return;
     }
+    
+    const selectionUnitIds = clickedShape.groupId ? shapes.filter(s => s.groupId === clickedShape.groupId).map(s => s.id) : [id];
 
-    const groupId = clickedShape.groupId;
-    const idsToSelect = groupId ? shapes.filter(s => s.groupId === groupId).map(s => s.id) : [id];
-
-    setSelectedShapeIds(prevIds => {
-        if (!shiftKey) {
-            return idsToSelect;
-        }
-        const isGroupSelected = idsToSelect.every(id => prevIds.includes(id));
-        if (isGroupSelected) {
-            return prevIds.filter(prevId => !idsToSelect.includes(prevId));
-        } else {
-            return [...new Set([...prevIds, ...idsToSelect])];
-        }
-    });
-  }, [shapes, isolationMode, setSelectedShapeIds]);
+    if (!shiftKey) {
+        setSelectedShapeIds(selectionUnitIds);
+        return;
+    }
+    
+    // Shift-click logic
+    const isUnitSelected = selectionUnitIds.every(id => selectedShapeIds.includes(id));
+    
+    if (isUnitSelected) {
+        setSelectedShapeIds(prevIds => prevIds.filter(prevId => !selectionUnitIds.includes(prevId)));
+    } else {
+        setSelectedShapeIds(prevIds => [...new Set([...prevIds, ...selectionUnitIds])]);
+    }
+  }, [shapes, isolationMode, selectedShapeIds, setSelectedShapeIds]);
   
   const handleShapesUpdate = useCallback((updatedShapes: Shape[], shouldCommit: boolean = false) => {
     updateShapes(updatedShapes);
