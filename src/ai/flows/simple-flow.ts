@@ -1,21 +1,20 @@
 'use server';
 /**
  * @fileOverview A simple AI flow for responding to user prompts.
+ *
+ * - simpleFlow - A function that handles a simple user prompt.
  */
 import {ai} from '@/ai/genkit';
 import {z} from 'zod';
-
-// Define the input schema for our tool.
-const GreetingMessageInputSchema = z.object({
-  name: z.string().describe('The name of the person to greet.'),
-});
 
 // Define the tool that the AI can decide to use.
 const getGreetingMessageTool = ai.defineTool(
   {
     name: 'getGreetingMessage',
     description: 'Get a friendly greeting message for the given name.',
-    inputSchema: GreetingMessageInputSchema,
+    inputSchema: z.object({
+      name: z.string().describe('The name of the person to greet.'),
+    }),
     outputSchema: z.string(),
   },
   async ({name}) => {
@@ -33,18 +32,24 @@ const simplePrompt = ai.definePrompt({
 
 /**
  * The main flow function that the client will call.
- * @param prompt - The user's text prompt.
- * @returns The AI's final text response.
+ * This wraps the AI logic into a verifiable and debuggable flow.
  */
-export async function simpleFlow(prompt: string): Promise<string> {
-  console.log(`[AI PROMPT] Sending: "${prompt}"`);
+export const simpleFlow = ai.defineFlow(
+  {
+    name: 'simpleFlow',
+    inputSchema: z.string(),
+    outputSchema: z.string(),
+  },
+  async (prompt) => {
+    console.log(`[AI FLOW INPUT] "${prompt}"`);
+    
+    // Send the prompt and tools to the AI model.
+    const llmResponse = await simplePrompt({prompt});
 
-  // Send the prompt and tools to the AI model.
-  const llmResponse = await simplePrompt({prompt});
+    // Log the full response for debugging.
+    console.log('[AI RESPONSE]', JSON.stringify(llmResponse, null, 2));
 
-  // Log the full response for debugging.
-  console.log('[AI RESPONSE]', JSON.stringify(llmResponse, null, 2));
-
-  // Return the final text output from the AI.
-  return llmResponse.text;
-}
+    // Return the final text output from the AI.
+    return llmResponse.text;
+  }
+);
