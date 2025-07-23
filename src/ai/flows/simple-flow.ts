@@ -42,6 +42,7 @@ export const simpleFlow = ai.defineFlow(
     // Send the prompt and tools to the AI model.
     const llmResponse = await simpleDotPrompt({
         prompt: prompt,
+        
         tools: [getGreetingMessageTool] // Provide the tool implementation
     });
 
