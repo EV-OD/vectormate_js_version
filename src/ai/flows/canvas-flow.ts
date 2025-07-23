@@ -4,19 +4,16 @@
  */
 import {ai} from '@/ai/genkit';
 import {z} from 'zod';
-import {Shape} from '@/lib/types';
+import {type Shape, RectangleShape} from '@/lib/types';
 import {nanoid} from 'nanoid';
 
-// Define the Zod schema for the output of our rectangle-drawing tool.
-// This must match the properties of the Shape types in the app.
-const RectangleShapeSchema = z.object({
-  x: z.number(),
-  y: z.number(),
-  width: z.number(),
-  height: z.number(),
-  fill: z.string().optional(),
-  stroke: z.string().optional(),
-  strokeWidth: z.number().optional(),
+// Define the Zod schema for the input of our rectangle-drawing tool.
+const RectangleParamsSchema = z.object({
+  x: z.number().describe('The x-coordinate of the top-left corner.'),
+  y: z.number().describe('The y-coordinate of the top-left corner.'),
+  width: z.number().describe('The width of the rectangle.'),
+  height: z.number().describe('The height of the rectangle.'),
+  fill: z.string().optional().describe('The fill color in hex format (e.g., "#ff0000").'),
 });
 
 // Define the tool that the AI can use to draw a rectangle.
@@ -24,18 +21,10 @@ export const drawRectangleTool = ai.defineTool(
   {
     name: 'drawRectangle',
     description: 'Draws a rectangle shape on the canvas.',
-    inputSchema: RectangleShapeSchema,
-    outputSchema: RectangleShapeSchema.extend({
-      id: z.string(),
-      type: z.literal('rectangle'),
-      name: z.string(),
-      rotation: z.number(),
-      opacity: z.number(),
-      fillOpacity: z.number(),
-      strokeOpacity: z.number(),
-    }),
+    inputSchema: RectangleParamsSchema,
+    outputSchema: z.custom<RectangleShape>(),
   },
-  async (params) => {
+  async (params): Promise<RectangleShape> => {
     console.log('[drawRectangleTool input]', params);
     // Augment the AI's parameters with the standard shape properties.
     return {
@@ -62,17 +51,21 @@ export const canvasFlow = ai.defineFlow(
   {
     name: 'canvasFlow',
     inputSchema: z.string(),
-    outputSchema: z.array(z.any()), // For now, we return any shape object.
+    outputSchema: z.array(z.any()),
   },
   async (prompt) => {
     console.log(`[canvasFlow] received prompt: "${prompt}"`);
 
-    const llmResponse = await canvasDotPrompt({
-      prompt: prompt,
+    // Use a chat session to allow for tool-call-response cycles.
+    const chat = ai.chat({
+      model: await canvasDotPrompt.model(),
       tools: [drawRectangleTool],
+      system: (await canvasDotPrompt.render()).messages[0]?.content[0].text,
     });
 
-    const toolRequests = llmResponse.toolRequests;
+    const llmResponse = await chat.send(prompt);
+
+    const toolRequests = llmResponse.toolRequests();
     console.log('[canvasFlow] tool requests:', toolRequests);
 
     if (toolRequests.length === 0) {
@@ -82,9 +75,9 @@ export const canvasFlow = ai.defineFlow(
 
     const toolResponses = [];
     for (const call of toolRequests) {
-      if (call.toolRequest.name === 'drawRectangle') {
+      if (call.tool === 'drawRectangle') {
         const result = await drawRectangleTool(
-          call.toolRequest.input as z.infer<typeof RectangleShapeSchema>
+          call.input as z.infer<typeof RectangleParamsSchema>
         );
         toolResponses.push(result);
       }

@@ -197,6 +197,7 @@ export function VectorEditor() {
       const generatedShapes = await canvasFlow(prompt);
       console.log('Shapes from AI:', generatedShapes);
       if (generatedShapes && generatedShapes.length > 0) {
+        addShapes(generatedShapes);
         toast({ title: "AI Shapes Generated", description: `${generatedShapes.length} shape(s) were created.` });
       } else {
         toast({ title: "AI", description: "The AI did not generate any shapes." });
@@ -211,7 +212,7 @@ export function VectorEditor() {
     } finally {
       setIsAiLoading(false);
     }
-  }, [toast]);
+  }, [toast, addShapes]);
 
   const isSingleImageSelected = selectedShapes.length === 1 && selectedShapes[0].type === 'image';
   const canCreateClippingMask = selectedShapeIds.length === 2 && !selectedShapes.some(s => s.groupId);
