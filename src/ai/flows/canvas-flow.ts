@@ -13,6 +13,8 @@ import {
     drawInputBoxTool,
     drawCheckboxTool,
     drawSelectDropdownTool,
+    drawLabelTool,
+    drawCardTool,
     generatedShapes
 } from '@/ai/tools/drawing-tools';
 
@@ -44,7 +46,9 @@ export const canvasFlow = ai.defineFlow(
           drawButtonTool,
           drawInputBoxTool,
           drawCheckboxTool,
-          drawSelectDropdownTool
+          drawSelectDropdownTool,
+          drawLabelTool,
+          drawCardTool
         ],
     });
 
