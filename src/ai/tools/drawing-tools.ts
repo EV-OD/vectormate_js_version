@@ -384,7 +384,7 @@ export const drawInputBoxTool = ai.defineTool(
       height: params.height,
       rotation: 0,
       opacity: 1,
-      fill: params.backgroundColor,
+      fill: params.backgroundColor ?? '#333333',
       stroke: params.borderColor,
       strokeWidth: 1,
       fillOpacity: 1,
