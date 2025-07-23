@@ -297,7 +297,7 @@ export const drawButtonTool = ai.defineTool(
       height: params.height,
       rotation: 0,
       opacity: 1,
-      fill: params.backgroundColor,
+      fill: params.backgroundColor ?? "#007bff",
       fillOpacity: 1,
       strokeOpacity: 1,
       borderRadius: 8, // Default rounded corners for buttons
@@ -325,7 +325,7 @@ export const drawButtonTool = ai.defineTool(
       fontSize,
       fontFamily: 'Inter',
       fontWeight: 'bold',
-      fill: params.textColor,
+      fill: params.textColor ?? "#ffffff",
     };
     generatedShapes.push(buttonText);
     
