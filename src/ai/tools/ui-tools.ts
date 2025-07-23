@@ -81,6 +81,9 @@ export const drawButtonTool = ai.defineTool(
   async (params): Promise<z.infer<typeof ButtonOutputSchema>> => {
     console.log('[drawButtonTool input]', params);
 
+    const width = params.width ?? 150;
+    const height = params.height ?? 50;
+
     // 1. Create the button rectangle
     const buttonRectangle: RectangleShape = {
       id: nanoid(),
@@ -88,8 +91,8 @@ export const drawButtonTool = ai.defineTool(
       name: `${params.text} Button`,
       x: params.x,
       y: params.y,
-      width: params.width,
-      height: params.height,
+      width: width,
+      height: height,
       rotation: 0,
       opacity: 1,
       fill: params.backgroundColor ?? "#007bff",
@@ -100,11 +103,11 @@ export const drawButtonTool = ai.defineTool(
     generatedShapes.push(buttonRectangle);
 
     // 2. Create the button text
-    const fontSize = Math.min(params.height * 0.4, params.width / params.text.length * 1.5);
+    const fontSize = Math.min(height * 0.4, width / params.text.length * 1.5);
     const { width: textWidth, height: textHeight } = getTextDimensions(params.text, fontSize, 'Inter', 'bold');
 
-    const textX = params.x + (params.width - textWidth) / 2;
-    const textY = params.y + (params.height - textHeight) / 2;
+    const textX = params.x + (width - textWidth) / 2;
+    const textY = params.y + (height - textHeight) / 2;
 
     const buttonText: TextShape = {
       id: nanoid(),
@@ -547,3 +550,5 @@ export const drawFormTool = ai.defineTool(
     return { card: cardShape.cardRectangle, title: titleShape };
   }
 );
+
+    
