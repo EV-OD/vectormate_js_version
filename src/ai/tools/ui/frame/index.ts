@@ -36,7 +36,7 @@ export const drawFrameTool = ai.defineTool(
     
     const isMobile = params.type === 'mobile';
     const aspectRatio = isMobile ? 16 / 9 : 9 / 16;
-    const width = params.width ?? (isMobile ? 320 : 1024);
+    const width = params.width;
     const height = width * aspectRatio;
     
     let currentY = params.y;

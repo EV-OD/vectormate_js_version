@@ -1,4 +1,3 @@
-
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 import { nanoid } from 'nanoid';
@@ -37,7 +36,7 @@ export const drawCheckboxTool = ai.defineTool(
   async (params) => {
     console.log('[drawCheckboxTool input]', params);
 
-    const size = params.size ?? 20;
+    const size = params.size;
 
     const box: RectangleShape = {
       id: nanoid(),

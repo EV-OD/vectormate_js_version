@@ -1,4 +1,3 @@
-
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 import { TextShape, RectangleShape } from '@/lib/types';
@@ -102,7 +101,7 @@ export const drawFormTool = ai.defineTool(
     const GAP_LABEL_INPUT = 8;
     const GAP_LAST_INPUT_BUTTON = 30;
 
-    const formWidth = params.width ?? 400;
+    const formWidth = params.width;
     let currentY = params.y + PADDING;
 
     const { width: titleWidth, height: titleHeight } = getTextDimensions(

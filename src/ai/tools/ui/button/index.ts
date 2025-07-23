@@ -10,8 +10,8 @@ import {
 } from '../../drawing';
 
 const ButtonParamsSchema = z.object({
-  x: z.number().describe("The x-coordinate of the button's top-left corner."),
-  y: z.number().describe("The y-coordinate of the button's top-left corner."),
+  x: z.number().describe("The button's top-left x-coordinate."),
+  y: z.number().describe("The button's top-left y-coordinate."),
   width: z.number().optional().default(150).describe('The width of the button.'),
   height: z.number().optional().default(50).describe('The height of the button.'),
   text: z.string().describe('The text label for the button.'),
@@ -35,8 +35,8 @@ export const drawButtonTool = ai.defineTool(
   async (params): Promise<z.infer<typeof ButtonOutputSchema>> => {
     console.log('[drawButtonTool input]', params);
 
-    const width = params.width ?? 150;
-    const height = params.height ?? 50;
+    const width = params.width;
+    const height = params.height;
 
     const buttonRectangle: RectangleShape = {
       id: nanoid(),
