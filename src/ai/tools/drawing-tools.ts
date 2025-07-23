@@ -267,8 +267,8 @@ const ButtonParamsSchema = z.object({
     width: z.number().optional().default(150).describe("The width of the button."),
     height: z.number().optional().default(50).describe("The height of the button."),
     text: z.string().describe("The text label for the button."),
-    backgroundColor: z.string().optional().default("#007bff").describe("The background color of the button in hex format."),
-    textColor: z.string().optional().default("#ffffff").describe("The text color in hex format."),
+    backgroundColor: z.string().optional().describe("The background color of the button in hex format."),
+    textColor: z.string().optional().describe("The text color in hex format."),
 });
 
 const ButtonOutputSchema = z.object({
@@ -341,7 +341,7 @@ const InputBoxParamsSchema = z.object({
     width: z.number().optional().default(250).describe("The width of the input box."),
     height: z.number().optional().default(40).describe("The height of the input box."),
     placeholderText: z.string().optional().describe("The placeholder text for the input."),
-    backgroundColor: z.string().optional().default("#333333").describe("The background color in hex format."),
+    backgroundColor: z.string().optional().describe("The background color in hex format."),
     borderColor: z.string().optional().default("#555555").describe("The border color in hex format."),
 });
 
@@ -606,7 +606,7 @@ const CardParamsSchema = z.object({
   y: z.number().describe("The card's top-left y-coordinate."),
   width: z.number().optional().default(300).describe('The width of the card.'),
   height: z.number().optional().default(200).describe('The height of the card.'),
-  backgroundColor: z.string().optional().default('#2d2d2d').describe('The background color of the card.'),
+  backgroundColor: z.string().optional().describe('The background color of the card.'),
   borderRadius: z.number().optional().default(12).describe('The corner radius of the card.'),
   title: z.string().optional().describe('An optional title to display at the top of the card.'),
 });
@@ -634,7 +634,7 @@ export const drawCardTool = ai.defineTool(
       height: params.height,
       rotation: 0,
       opacity: 1,
-      fill: params.backgroundColor,
+      fill: params.backgroundColor ?? '#2d2d2d',
       fillOpacity: 1,
       strokeOpacity: 1,
       borderRadius: params.borderRadius,
