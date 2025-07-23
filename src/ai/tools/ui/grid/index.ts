@@ -29,6 +29,7 @@ const availableTools: { [key: string]: any } = {
   drawCard: drawCardTool,
   drawForm: drawFormTool,
   drawFrame: drawFrameTool,
+  drawGridLayout: (...args: any[]) => drawGridLayoutTool(...args), // Add self-reference
 };
 
 const ToolCallSchema = z.object({
@@ -54,7 +55,7 @@ const GridLayoutToolParamsSchema = z.object({
 export const drawGridLayoutTool = ai.defineTool(
   {
     name: 'drawGridLayout',
-    description: 'Draws a grid layout and populates its cells by calling other drawing tools.',
+    description: 'Draws a grid layout and populates its cells by calling other drawing tools. Can be nested.',
     inputSchema: GridLayoutToolParamsSchema,
     outputSchema: z.object({
       success: z.boolean(),
