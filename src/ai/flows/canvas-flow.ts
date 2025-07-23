@@ -83,7 +83,7 @@ export const canvasFlow = ai.defineFlow(
 
     const llmResponse = await ai.generate({
         prompt: `You are a creative assistant for a vector design application. Your primary task is to interpret the user's text prompt and use the available tools to create shapes on the canvas. Carefully analyze the user's request and break it down into one or more function calls to the provided tools. Pay close attention to the tool's input schema and description to understand its capabilities. The user's prompt is: "${prompt}"`,
-        model: 'googleai/gemini-2.5-flash',
+        model: 'googleai/gemini-1.5-flash',
         tools: [drawRectangleTool],
     });
     console.log(llmResponse);
