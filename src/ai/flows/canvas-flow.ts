@@ -10,7 +10,6 @@ import {
     drawCircleTool,
     drawLineTool,
     drawTextTool,
-    generatedShapes
 } from '@/ai/tools/drawing';
 import { drawButtonTool } from '../tools/ui/button';
 import { drawInputBoxTool } from '../tools/ui/input';
@@ -19,6 +18,7 @@ import { drawSelectDropdownTool } from '../tools/ui/select';
 import { drawLabelTool } from '../tools/ui/label';
 import { drawCardTool } from '../tools/ui/card';
 import { drawFormTool } from '../tools/ui/form';
+import { generatedShapes } from '@/ai/tools/drawing';
 
 
 /**
