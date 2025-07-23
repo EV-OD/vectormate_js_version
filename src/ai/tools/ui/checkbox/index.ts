@@ -1,3 +1,4 @@
+
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 import { nanoid } from 'nanoid';
@@ -36,14 +37,16 @@ export const drawCheckboxTool = ai.defineTool(
   async (params) => {
     console.log('[drawCheckboxTool input]', params);
 
+    const size = params.size ?? 20;
+
     const box: RectangleShape = {
       id: nanoid(),
       type: 'rectangle',
       name: 'Checkbox',
       x: params.x,
       y: params.y,
-      width: params.size,
-      height: params.size,
+      width: size,
+      height: size,
       rotation: 0,
       opacity: 1,
       fill: '#333333',
@@ -57,15 +60,15 @@ export const drawCheckboxTool = ai.defineTool(
 
     let checkmark: PathShape | undefined;
     if (params.checked) {
-      const checkPath = `M ${params.size * 0.2} ${params.size * 0.5} L ${params.size * 0.4} ${params.size * 0.7} L ${params.size * 0.8} ${params.size * 0.3}`;
+      const checkPath = `M ${size * 0.2} ${size * 0.5} L ${size * 0.4} ${size * 0.7} L ${size * 0.8} ${size * 0.3}`;
       checkmark = {
         id: nanoid(),
         type: 'path',
         name: 'Checkmark',
         x: params.x,
         y: params.y,
-        width: params.size,
-        height: params.size,
+        width: size,
+        height: size,
         rotation: 0,
         opacity: 1,
         fill: 'none',
@@ -78,7 +81,7 @@ export const drawCheckboxTool = ai.defineTool(
 
     let labelShape: TextShape | undefined;
     if (params.label) {
-      const fontSize = params.size * 0.8;
+      const fontSize = size * 0.8;
       const { width: textWidth, height: textHeight } = getTextDimensions(
         params.label,
         fontSize,
@@ -90,8 +93,8 @@ export const drawCheckboxTool = ai.defineTool(
         id: nanoid(),
         type: 'text',
         name: 'Checkbox Label',
-        x: params.x + params.size + 8, // padding
-        y: params.y + (params.size - textHeight) / 2,
+        x: params.x + size + 8, // padding
+        y: params.y + (size - textHeight) / 2,
         width: textWidth,
         height: textHeight,
         rotation: 0,
