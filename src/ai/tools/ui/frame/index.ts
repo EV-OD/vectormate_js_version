@@ -13,17 +13,17 @@ import {
 } from '../../drawing';
 
 const FrameParamsSchema = z.object({
-  x: z.number().describe("The top-left x-coordinate of the frame."),
-  y: z.number().describe("The top-left y-coordinate of the frame."),
-  type: z.enum(['mobile', 'desktop']).default('desktop').describe("The type of frame to create."),
-  width: z.number().optional().default(400).describe("The total width of the frame."),
-  label: z.string().optional().describe("An optional label to display above the frame."),
+  x: z.number().describe("The top-left x-coordinate of the entire frame component."),
+  y: z.number().describe("The top-left y-coordinate of the entire frame component."),
+  type: z.enum(['mobile', 'desktop']).default('desktop').describe("The type of device frame to create. This determines the aspect ratio and styling details. 'mobile' typically has a portrait aspect ratio, 'desktop' has a landscape one."),
+  width: z.number().optional().default(400).describe("The total width of the frame. The height will be calculated automatically based on the frame type's aspect ratio."),
+  label: z.string().optional().describe("An optional text label to display above the frame, useful for titling mockups."),
 });
 
 export const drawFrameTool = ai.defineTool(
   {
     name: 'drawFrame',
-    description: 'Draws a device frame (mobile or desktop) to act as a container for a UI design.',
+    description: 'Draws a device frame (either mobile or desktop) which can be used as a container for a UI design. Includes an outer body, an inner screen, and optional details like a camera notch for mobile.',
     inputSchema: FrameParamsSchema,
     outputSchema: z.object({
       outerFrame: RectangleShapeSchema,
@@ -36,7 +36,7 @@ export const drawFrameTool = ai.defineTool(
     
     const isMobile = params.type === 'mobile';
     const aspectRatio = isMobile ? 16 / 9 : 9 / 16;
-    const width = params.width;
+    const width = params.width ?? 400;
     const height = width * aspectRatio;
     
     let currentY = params.y;

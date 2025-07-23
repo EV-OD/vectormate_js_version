@@ -12,11 +12,11 @@ import {
 const ButtonParamsSchema = z.object({
   x: z.number().describe("The button's top-left x-coordinate."),
   y: z.number().describe("The button's top-left y-coordinate."),
-  width: z.number().optional().default(150).describe('The width of the button.'),
-  height: z.number().optional().default(50).describe('The height of the button.'),
-  text: z.string().describe('The text label for the button.'),
-  backgroundColor: z.string().optional().describe('The background color of the button in hex format.'),
-  textColor: z.string().optional().describe('The text color in hex format.'),
+  width: z.number().optional().default(150).describe('The width of the button in pixels.'),
+  height: z.number().optional().default(50).describe('The height of the button in pixels.'),
+  text: z.string().describe('The text label displayed on the button (e.g., "Submit", "Click Me").'),
+  backgroundColor: z.string().optional().describe('The background color of the button in 6-digit hex format (e.g., "#007bff").'),
+  textColor: z.string().optional().describe('The text color in 6-digit hex format (e.g., "#ffffff").'),
 });
 
 export const ButtonOutputSchema = z.object({
@@ -30,15 +30,15 @@ export const drawButtonTool = ai.defineTool(
   {
     name: 'drawButton',
     description:
-      'Draws a complete button with a background rectangle and centered text. This is a preset tool.',
+      'Draws a complete, clickable-looking button element with a background rectangle and centered text. This is a high-level component.',
     inputSchema: ButtonParamsSchema,
     outputSchema: ButtonOutputSchema,
   },
   async (params): Promise<z.infer<typeof ButtonOutputSchema>> => {
     console.log('[drawButtonTool input]', params);
 
-    const width = params.width;
-    const height = params.height;
+    const width = params.width ?? 150;
+    const height = params.height ?? 50;
 
     const buttonRectangle: RectangleShape = {
       id: nanoid(),

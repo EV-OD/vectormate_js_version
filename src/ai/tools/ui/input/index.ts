@@ -12,24 +12,24 @@ import {
 const InputBoxParamsSchema = z.object({
   x: z.number().describe("The x-coordinate of the input box's top-left corner."),
   y: z.number().describe("The y-coordinate of the input box's top-left corner."),
-  width: z.number().optional().default(250).describe('The width of the input box.'),
-  height: z.number().optional().default(40).describe('The height of the input box.'),
+  width: z.number().optional().default(250).describe('The width of the input box in pixels.'),
+  height: z.number().optional().default(40).describe('The height of the input box in pixels.'),
   placeholderText: z
     .string()
     .optional()
-    .describe('The placeholder text for the input.'),
-  backgroundColor: z.string().optional().describe('The background color in hex format.'),
+    .describe('Optional grayed-out text to display inside the input box when it is empty.'),
+  backgroundColor: z.string().optional().describe('The background color of the input box in 6-digit hex format. Defaults to dark gray.'),
   borderColor: z
     .string()
     .optional()
     .default('#555555')
-    .describe('The border color in hex format.'),
+    .describe('The border color of the input box in 6-digit hex format.'),
 });
 
 export const drawInputBoxTool = ai.defineTool(
   {
     name: 'drawInputBox',
-    description: 'Draws a styled input box, optionally with placeholder text.',
+    description: 'Draws a styled input box, a common UI element for text entry. Can optionally include placeholder text.',
     inputSchema: InputBoxParamsSchema,
     outputSchema: z.object({
       inputRectangle: RectangleShapeSchema,
@@ -45,8 +45,8 @@ export const drawInputBoxTool = ai.defineTool(
       name: 'Input Box',
       x: params.x,
       y: params.y,
-      width: params.width,
-      height: params.height,
+      width: params.width ?? 250,
+      height: params.height ?? 40,
       rotation: 0,
       opacity: 1,
       fill: params.backgroundColor ?? '#333333',
@@ -60,7 +60,7 @@ export const drawInputBoxTool = ai.defineTool(
 
     let placeholderShape: TextShape | undefined;
     if (params.placeholderText) {
-      const fontSize = params.height * 0.4;
+      const fontSize = (params.height ?? 40) * 0.4;
       const { width: textWidth, height: textHeight } = getTextDimensions(
         params.placeholderText,
         fontSize,
@@ -73,7 +73,7 @@ export const drawInputBoxTool = ai.defineTool(
         type: 'text',
         name: 'Placeholder',
         x: params.x + 10, // Padding
-        y: params.y + (params.height - textHeight) / 2,
+        y: params.y + ((params.height ?? 40) - textHeight) / 2,
         width: textWidth,
         height: textHeight,
         rotation: 0,

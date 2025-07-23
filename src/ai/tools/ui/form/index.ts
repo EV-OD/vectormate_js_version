@@ -52,19 +52,19 @@ type FormField = z.infer<typeof FormFieldSchema>;
 const FormParamsSchema = z.object({
   x: z.number().describe("The form container's top-left x-coordinate."),
   y: z.number().describe("The form container's top-left y-coordinate."),
-  width: z.number().optional().default(400).describe('The width of the form.'),
+  width: z.number().optional().default(350).describe('The total width of the form container.'),
   title: z
     .string()
-    .describe("The title of the form, like 'Login' or 'Sign Up'."),
+    .describe("The title of the form, which will be displayed at the top (e.g., 'Login' or 'Sign Up')."),
   fields: z
     .string()
     .describe(
-      'A JSON string representing an array of fields to include in the form. Example: `[{"type": "input", "label": "Email"}, {"type": "checkbox", "label": "Remember me"}]`'
+      'A JSON string representing an array of field objects to include in the form. Each object must have a "type" property. Supported types are "input", "checkbox", and "link". Example: `[{"type": "input", "label": "Email"}, {"type": "checkbox", "label": "Remember me"}]`'
     ),
   buttonText: z
     .string()
     .describe(
-      "The text for the submit button (e.g., 'Log In', 'Create Account')."
+      "The text for the final submit button at the bottom of the form (e.g., 'Log In', 'Create Account')."
     ),
 });
 
@@ -72,7 +72,7 @@ export const drawFormTool = ai.defineTool(
   {
     name: 'drawForm',
     description:
-      'Draws a complete UI form, including a title, various fields (inputs, checkboxes, links), and a submit button. This is a high-level component tool.',
+      'Draws a complete UI form within a card, including a title, various fields (inputs, checkboxes, links), and a submit button. This is a high-level component that orchestrates other tools.',
     inputSchema: FormParamsSchema,
     outputSchema: z.object({
       card: RectangleShapeSchema,
@@ -101,7 +101,7 @@ export const drawFormTool = ai.defineTool(
     const GAP_LABEL_INPUT = 8;
     const GAP_LAST_INPUT_BUTTON = 30;
 
-    const formWidth = params.width;
+    const formWidth = params.width ?? 350;
     let currentY = params.y + PADDING;
 
     const { width: titleWidth, height: titleHeight } = getTextDimensions(

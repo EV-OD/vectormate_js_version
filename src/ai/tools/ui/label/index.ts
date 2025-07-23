@@ -12,14 +12,14 @@ const LabelParamsSchema = z.object({
   text: z.string().describe('The text content of the label.'),
   x: z.number().describe("The label's top-left x-coordinate."),
   y: z.number().describe("The label's top-left y-coordinate."),
-  fontSize: z.number().optional().default(14).describe('The font size.'),
+  fontSize: z.number().optional().default(14).describe('The font size of the label text in pixels.'),
 });
 
 export const drawLabelTool = ai.defineTool(
   {
     name: 'drawLabel',
     description:
-      'Draws a text label, typically used to identify a nearby UI element like an input field.',
+      'Draws a simple text label. This is typically used to identify a nearby UI element, such as an input field or a checkbox.',
     inputSchema: LabelParamsSchema,
     outputSchema: TextShapeSchema,
   },
@@ -27,7 +27,7 @@ export const drawLabelTool = ai.defineTool(
     console.log('[drawLabelTool input]', params);
     const { width, height } = getTextDimensions(
       params.text,
-      params.fontSize,
+      params.fontSize ?? 14,
       'Inter',
       'normal'
     );
@@ -42,7 +42,7 @@ export const drawLabelTool = ai.defineTool(
       rotation: 0,
       opacity: 1,
       text: params.text,
-      fontSize: params.fontSize,
+      fontSize: params.fontSize ?? 14,
       fontFamily: 'Inter',
       fontWeight: 'normal',
       fill: '#eeeeee',

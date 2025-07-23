@@ -10,36 +10,36 @@ import { drawButtonTool, ButtonOutputSchema } from '../button';
 import { getTextDimensions } from '@/lib/geometry';
 
 const NavbarParamsSchema = z.object({
-  x: z.number().describe('The top-left x-coordinate of the navbar.'),
-  y: z.number().describe('The top-left y-coordinate of the navbar.'),
+  x: z.number().describe('The top-left x-coordinate of the navbar container.'),
+  y: z.number().describe('The top-left y-coordinate of the navbar container.'),
   width: z.number().default(1200).describe('The total width of the navbar.'),
   height: z.number().default(60).describe('The height of the navbar.'),
-  brandText: z.string().describe('The text for the brand/logo area.'),
+  brandText: z.string().describe('The text for the brand or logo, usually displayed on the far left.'),
   menuItems: z
     .string()
     .describe(
-      'A JSON string representing an array of menu item texts, e.g., `["Home", "Features", "Pricing"]`.'
+      'A JSON string representing an array of menu item texts. Example: `["Home", "Features", "Pricing"]`.'
     ),
   actionButtonText: z
     .string()
     .optional()
-    .describe('Optional text for a call-to-action button on the right.'),
+    .describe('Optional text for a call-to-action button, usually displayed on the far right.'),
   layoutStyle: z
     .enum(['left-center-right', 'left-right'])
     .default('left-center-right')
     .describe(
-      'The layout style. `left-center-right` places menu items in the center. `left-right` places menu items next to the brand.'
+      'The layout style for the menu items. `left-center-right` places menu items in the horizontal center of the navbar. `left-right` places menu items immediately to the right of the brand text.'
     ),
   backgroundColor: z
     .string()
     .optional()
-    .describe('The background color of the navbar.'),
+    .describe('The background color of the navbar in 6-digit hex format. Defaults to a dark color.'),
 });
 
 export const drawNavbarTool = ai.defineTool(
   {
     name: 'drawNavbar',
-    description: 'Draws a complete navigation bar with a brand, menu items, and an optional action button.',
+    description: 'Draws a complete navigation bar component, including a brand/logo, a list of menu items, and an optional action button. Supports multiple common layout styles.',
     inputSchema: NavbarParamsSchema,
     outputSchema: z.object({
       background: RectangleShapeSchema,

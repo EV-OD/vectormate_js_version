@@ -13,19 +13,19 @@ import {
 const CheckboxParamsSchema = z.object({
   x: z.number().describe("The x-coordinate of the checkbox's top-left corner."),
   y: z.number().describe("The y-coordinate of the checkbox's top-left corner."),
-  label: z.string().optional().describe('The text label for the checkbox.'),
+  label: z.string().optional().describe('The text label displayed next to the checkbox.'),
   checked: z
     .boolean()
     .optional()
     .default(false)
-    .describe('Whether the checkbox is checked.'),
-  size: z.number().optional().default(20).describe('The size of the checkbox square.'),
+    .describe('Whether the checkbox should be rendered in a checked state. Draws a checkmark if true.'),
+  size: z.number().optional().default(20).describe('The size (width and height) of the checkbox square in pixels.'),
 });
 
 export const drawCheckboxTool = ai.defineTool(
   {
     name: 'drawCheckbox',
-    description: 'Draws a checkbox with an optional label and checked state.',
+    description: 'Draws a checkbox UI component, which includes a box, an optional label, and an optional checkmark if in the "checked" state.',
     inputSchema: CheckboxParamsSchema,
     outputSchema: z.object({
       box: RectangleShapeSchema,
@@ -36,7 +36,7 @@ export const drawCheckboxTool = ai.defineTool(
   async (params) => {
     console.log('[drawCheckboxTool input]', params);
 
-    const size = params.size;
+    const size = params.size ?? 20;
 
     const box: RectangleShape = {
       id: nanoid(),

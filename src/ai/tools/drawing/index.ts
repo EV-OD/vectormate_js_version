@@ -63,18 +63,18 @@ export const PathShapeSchema = z.object({
 
 // --- Rectangle Tool ---
 const RectangleParamsSchema = z.object({
-  x: z.number().describe('The x-coordinate of the top-left corner.'),
-  y: z.number().describe('The y-coordinate of the top-left corner.'),
-  width: z.number().describe('The width of the rectangle.'),
-  height: z.number().describe('The height of the rectangle.'),
-  fill: z.string().optional().describe('The fill color in hex format (e.g., "#ff0000").'),
-  borderRadius: z.number().optional().describe('The corner radius of the rectangle.'),
+  x: z.number().describe('The x-coordinate of the top-left corner of the rectangle.'),
+  y: z.number().describe('The y-coordinate of the top-left corner of the rectangle.'),
+  width: z.number().describe('The width of the rectangle in pixels.'),
+  height: z.number().describe('The height of the rectangle in pixels.'),
+  fill: z.string().optional().describe('The fill color in 6-digit hex format (e.g., "#ff0000" for red). Defaults to a gray color if not specified.'),
+  borderRadius: z.number().optional().default(0).describe('The corner radius for creating rounded rectangles. A value of 0 means sharp corners.'),
 });
 
 export const drawRectangleTool = ai.defineTool(
   {
     name: 'drawRectangle',
-    description: 'Draws a rectangle shape on the canvas.',
+    description: 'Draws a rectangle shape on the canvas. This is a fundamental building block for many UI elements.',
     inputSchema: RectangleParamsSchema,
     outputSchema: RectangleShapeSchema,
   },
@@ -99,11 +99,11 @@ export const drawRectangleTool = ai.defineTool(
 
 // --- Circle/Ellipse Tool ---
 const CircleParamsSchema = z.object({
-  cx: z.number().describe('The x-coordinate of the center of the circle/ellipse.'),
-  cy: z.number().describe('The y-coordinate of the center of the circle/ellipse.'),
-  radiusX: z.number().describe('The horizontal radius of the ellipse. For a circle, this is the radius.'),
-  radiusY: z.number().describe('The vertical radius of the ellipse. For a circle, this should be equal to radiusX.'),
-  fill: z.string().optional().describe('The fill color in hex format (e.g., "#ff0000").'),
+  cx: z.number().describe('The x-coordinate of the center of the circle or ellipse.'),
+  cy: z.number().describe('The y-coordinate of the center of the circle or ellipse.'),
+  radiusX: z.number().describe('The horizontal radius. For a perfect circle, this must be equal to radiusY.'),
+  radiusY: z.number().describe('The vertical radius. For a perfect circle, this must be equal to radiusX.'),
+  fill: z.string().optional().describe('The fill color in 6-digit hex format (e.g., "#00ff00" for green). Defaults to a gray color.'),
 });
 const CircleShapeSchema = z.object({
     id: z.string(),
@@ -122,7 +122,7 @@ const CircleShapeSchema = z.object({
 export const drawCircleTool = ai.defineTool(
   {
     name: 'drawCircleOrEllipse',
-    description: 'Draws a circle or an ellipse on the canvas. To draw a circle, ensure radiusX and radiusY are equal.',
+    description: 'Draws a circle or an ellipse on the canvas. To draw a perfect circle, ensure radiusX and radiusY are equal.',
     inputSchema: CircleParamsSchema,
     outputSchema: CircleShapeSchema,
   },
@@ -153,7 +153,7 @@ const LineParamsSchema = z.object({
   y1: z.number().describe('The y-coordinate of the starting point of the line.'),
   x2: z.number().describe('The x-coordinate of the ending point of the line.'),
   y2: z.number().describe('The y-coordinate of the ending point of the line.'),
-  stroke: z.string().optional().describe('The stroke color in hex format (e.g., "#ff0000").'),
+  stroke: z.string().optional().describe('The stroke color in 6-digit hex format (e.g., "#0000ff" for blue). Defaults to white.'),
 });
 const LineShapeSchema = z.object({
     id: z.string(),
@@ -172,7 +172,7 @@ const LineShapeSchema = z.object({
 export const drawLineTool = ai.defineTool(
   {
     name: 'drawLine',
-    description: 'Draws a line segment on the canvas.',
+    description: 'Draws a straight line segment on the canvas from a start point (x1, y1) to an end point (x2, y2).',
     inputSchema: LineParamsSchema,
     outputSchema: LineShapeSchema,
   },
@@ -199,19 +199,19 @@ export const drawLineTool = ai.defineTool(
 
 // --- Text Tool ---
 const TextParamsSchema = z.object({
-  text: z.string().describe('The text content to display.'),
-  x: z.number().describe('The x-coordinate of the top-left corner of the text.'),
-  y: z.number().describe('The y-coordinate of the top-left corner of the text.'),
-  fontSize: z.number().optional().default(48).describe('The font size of the text.'),
-  fontFamily: z.string().optional().default('Inter').describe('The font family of the text.'),
+  text: z.string().describe('The text content to be displayed on the canvas.'),
+  x: z.number().describe('The x-coordinate of the top-left corner of the text bounding box.'),
+  y: z.number().describe('The y-coordinate of the top-left corner of the text bounding box.'),
+  fontSize: z.number().optional().default(48).describe('The font size of the text in pixels.'),
+  fontFamily: z.string().optional().default('Inter').describe('The font family to use for the text (e.g., "Inter", "Arial", "Verdana").'),
   fontWeight: z.enum(['normal', 'bold']).optional().default('normal').describe('The font weight of the text.'),
-  fill: z.string().optional().describe('The fill color in hex format (e.g., "#ff0000").'),
+  fill: z.string().optional().describe('The fill color in 6-digit hex format (e.g., "#ffffff" for white). Defaults to white.'),
 });
 
 export const drawTextTool = ai.defineTool(
   {
     name: 'drawText',
-    description: 'Draws text on the canvas. Use this for general-purpose text like headings or paragraphs.',
+    description: 'Draws a text element on the canvas. Use this for adding titles, labels, paragraphs, or any other textual content.',
     inputSchema: TextParamsSchema,
     outputSchema: TextShapeSchema,
   },

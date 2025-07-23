@@ -40,24 +40,24 @@ const ToolCallSchema = z.object({
 });
 
 const GridLayoutToolParamsSchema = z.object({
-  x: z.number().describe('The top-left x-coordinate of the grid container.'),
-  y: z.number().describe('The top-left y-coordinate of the grid container.'),
+  x: z.number().describe('The top-left x-coordinate of the entire grid container.'),
+  y: z.number().describe('The top-left y-coordinate of the entire grid container.'),
   columns: z.number().min(1).describe('The number of columns in the grid.'),
   rows: z.number().min(1).describe('The number of rows in the grid.'),
-  width: z.number().describe('The total width of the grid.'),
-  height: z.number().describe('The total height of the grid.'),
-  gap: z.number().default(10).describe('The spacing between grid cells.'),
+  width: z.number().describe('The total width of the grid, including gaps.'),
+  height: z.number().describe('The total height of the grid, including gaps.'),
+  gap: z.number().default(10).describe('The spacing in pixels between grid cells (both horizontally and vertically).'),
   items: z
     .string()
     .describe(
-      'A JSON string representing an array of tool calls to place in the grid. Example: `[{"toolName": "drawButton", "params": {"text": "Cell 1"}}, {"toolName": "drawRectangle", "params": {}}]`'
+      'A JSON string representing an array of tool call objects to place in the grid, in row-major order. Each object must have a "toolName" and a "params" object. Example: `[{"toolName": "drawButton", "params": {"text": "Cell 1"}}, {"toolName": "drawRectangle", "params": {}}]`'
     ),
 });
 
 export const drawGridLayoutTool = ai.defineTool(
   {
     name: 'drawGridLayout',
-    description: 'Draws a grid layout and populates its cells by calling other drawing tools. Can be nested.',
+    description: 'A powerful tool that arranges other UI components into a grid. It takes grid dimensions and an array of other tool calls to populate the grid cells. This tool can be nested to create complex layouts.',
     inputSchema: GridLayoutToolParamsSchema,
     outputSchema: z.object({
       success: z.boolean(),

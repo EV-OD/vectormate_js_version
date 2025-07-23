@@ -12,28 +12,28 @@ import {
 const CardParamsSchema = z.object({
   x: z.number().describe("The card's top-left x-coordinate."),
   y: z.number().describe("The card's top-left y-coordinate."),
-  width: z.number().optional().default(300).describe('The width of the card.'),
-  height: z.number().optional().default(200).describe('The height of the card.'),
+  width: z.number().optional().default(300).describe('The width of the card container.'),
+  height: z.number().optional().default(200).describe('The height of the card container.'),
   backgroundColor: z
     .string()
     .optional()
-    .describe('The background color of the card.'),
+    .describe('The background color of the card in 6-digit hex format (e.g., "#2d2d2d").'),
   borderRadius: z
     .number()
     .optional()
     .default(12)
-    .describe('The corner radius of the card.'),
+    .describe('The corner radius of the card, for rounded corners.'),
   title: z
     .string()
     .optional()
-    .describe('An optional title to display at the top of the card.'),
+    .describe('An optional title to display at the top of the card. If provided, it will be rendered as a text element inside the card.'),
 });
 
 export const drawCardTool = ai.defineTool(
   {
     name: 'drawCard',
     description:
-      'Draws a card element, which is a container for other content. Can optionally include a title.',
+      'Draws a card element, which is a styled rectangular container for other content. Useful for grouping information. Can optionally include a title.',
     inputSchema: CardParamsSchema,
     outputSchema: z.object({
       cardRectangle: RectangleShapeSchema,
@@ -49,8 +49,8 @@ export const drawCardTool = ai.defineTool(
       name: params.title ? `${params.title} Card` : 'Card',
       x: params.x,
       y: params.y,
-      width: params.width,
-      height: params.height,
+      width: params.width ?? 300,
+      height: params.height ?? 200,
       rotation: 0,
       opacity: 1,
       fill: params.backgroundColor ?? '#2d2d2d',
