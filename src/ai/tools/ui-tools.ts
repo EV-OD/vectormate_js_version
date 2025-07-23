@@ -1,3 +1,4 @@
+
 /**
  * @fileOverview Defines and exports high-level AI tools for drawing UI components.
  */
@@ -487,12 +488,13 @@ export const drawFormTool = ai.defineTool(
     const GAP_LABEL_INPUT = 8;
     const GAP_LAST_INPUT_BUTTON = 30;
 
+    const formWidth = params.width ?? 350;
     let currentY = params.y + PADDING;
 
     const { width: titleWidth, height: titleHeight } = getTextDimensions(params.title, TITLE_FONT_SIZE, 'Inter', 'bold');
     const titleShape = await drawTextTool({
       text: params.title,
-      x: params.x + (params.width - titleWidth) / 2,
+      x: params.x + (formWidth - titleWidth) / 2,
       y: currentY,
       fontSize: TITLE_FONT_SIZE,
       fontWeight: 'bold',
@@ -513,7 +515,7 @@ export const drawFormTool = ai.defineTool(
       await drawInputBoxTool({
         x: params.x + PADDING,
         y: currentY,
-        width: params.width - (PADDING * 2),
+        width: formWidth - (PADDING * 2),
         height: INPUT_HEIGHT,
         placeholderText: input.placeholder,
       });
@@ -526,7 +528,7 @@ export const drawFormTool = ai.defineTool(
     await drawButtonTool({
       x: params.x + PADDING,
       y: currentY,
-      width: params.width - (PADDING * 2),
+      width: formWidth - (PADDING * 2),
       height: BUTTON_HEIGHT,
       text: params.buttonText,
     });
@@ -536,7 +538,7 @@ export const drawFormTool = ai.defineTool(
     const cardShape = await drawCardTool({
         x: params.x,
         y: params.y,
-        width: params.width,
+        width: formWidth,
         height: totalHeight,
         title: '',
     });
