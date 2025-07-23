@@ -5,6 +5,10 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'zod';
 import {nanoid} from 'nanoid';
+import {type Shape} from '@/lib/types';
+
+// This array will hold the results of the tool calls.
+const generatedShapes: Shape[] = [];
 
 // Define the Zod schema for the input of our rectangle-drawing tool.
 const RectangleParamsSchema = z.object({
@@ -44,9 +48,9 @@ export const drawRectangleTool = ai.defineTool(
   async (params): Promise<z.infer<typeof RectangleShapeSchema>> => {
     console.log('[drawRectangleTool input]', params);
     // Augment the AI's parameters with the standard shape properties.
-    return {
+    const newShape = {
       id: nanoid(),
-      type: 'rectangle',
+      type: 'rectangle' as const,
       name: 'Rectangle',
       ...params,
       rotation: 0,
@@ -55,6 +59,9 @@ export const drawRectangleTool = ai.defineTool(
       fillOpacity: 1,
       strokeOpacity: 1,
     };
+    // Store the result of this tool call.
+    generatedShapes.push(newShape);
+    return newShape;
   }
 );
 
@@ -72,32 +79,17 @@ export const canvasFlow = ai.defineFlow(
   },
   async (prompt) => {
     console.log(`[canvasFlow] received prompt: "${prompt}"`);
+    
+    // Clear previously generated shapes before a new run.
+    generatedShapes.length = 0;
 
     const llmResponse = await canvasDotPrompt({
         prompt,
         tools: [drawRectangleTool],
     });
-    console.log(llmResponse)
+    console.log(llmResponse.text);
 
-    const toolRequests = llmResponse.toolRequests;
-    console.log('[canvasFlow] tool requests:', toolRequests);
-
-    if (toolRequests.length === 0) {
-      console.log('[canvasFlow] No tool requests from AI.');
-      return [];
-    }
-    
-    const toolResponses = [];
-    for (const call of toolRequests) {
-        if (call.tool === 'drawRectangle') {
-            const result = await drawRectangleTool(
-                call.input as z.infer<typeof RectangleParamsSchema>
-            );
-            toolResponses.push(result);
-        }
-    }
-
-    console.log('[canvasFlow] generated shapes:', toolResponses);
-    return toolResponses;
+    console.log('[canvasFlow] generated shapes:', generatedShapes);
+    return generatedShapes;
   }
 );
