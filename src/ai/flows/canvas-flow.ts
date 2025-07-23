@@ -77,6 +77,7 @@ export const canvasFlow = ai.defineFlow(
         prompt,
         tools: [drawRectangleTool],
     });
+    console.log(llmResponse)
 
     const toolRequests = llmResponse.toolRequests;
     console.log('[canvasFlow] tool requests:', toolRequests);
