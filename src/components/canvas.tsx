@@ -38,7 +38,6 @@ export function Canvas(props: CanvasProps) {
     handleMouseMove,
     handleMouseUp,
     handleContextMenu,
-    handleWheel
   } = useCanvasInteractions({
       ...props,
       isolationMode,
@@ -135,7 +134,6 @@ export function Canvas(props: CanvasProps) {
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onContextMenu={handleContextMenu}
-      onWheel={handleWheel}
     >
         <defs>
             {clipPathDefs}

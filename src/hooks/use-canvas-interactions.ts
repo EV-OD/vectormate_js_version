@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { type Shape, type Tool, type InteractionState, type Handle, PolygonShape, CanvasView, ImageShape, SVGShape, PathShape, TextShape } from '@/lib/types';
 import { nanoid } from 'nanoid';
 import { getBounds, getHexagonPoints, scalePolygonPoints, scalePathData, getTextDimensions } from '@/lib/geometry';
@@ -437,7 +437,7 @@ export function useCanvasInteractions({
             const initialShape = initialShapes[0];
 
             if (initialShape.type === 'text') {
-                const { x: sx } = getMousePosition(e);
+                const { x: sx, y: sy } = getMousePosition(e);
                 const snappedDx = sx - interactionState.startX;
                 const oldWidth = initialShape.width;
                 let newWidth = oldWidth + snappedDx;
@@ -799,6 +799,20 @@ export function useCanvasInteractions({
 
     onViewChange({ scale: clampedScale, pan: newPan });
   }, [canvasView, getScreenPosition, onViewChange]);
+  
+  useEffect(() => {
+    const svgElement = svgRef.current;
+    if (!svgElement) return;
+
+    // The 'wheel' event listener must be marked as non-passive to allow preventDefault().
+    const wheelHandler = (e: WheelEvent) => handleWheel(e as unknown as React.WheelEvent);
+    
+    svgElement.addEventListener('wheel', wheelHandler, { passive: false });
+
+    return () => {
+        svgElement.removeEventListener('wheel', wheelHandler);
+    };
+  }, [handleWheel]);
 
   return {
     svgRef,
@@ -809,6 +823,5 @@ export function useCanvasInteractions({
     handleMouseMove,
     handleMouseUp,
     handleContextMenu,
-    handleWheel
   };
 }

@@ -151,6 +151,17 @@ export function RightSidebar({
       }
       return defaultValue;
   }
+  
+  const getColorValue = (prop: 'fill' | 'stroke'): string => {
+      const value = getCommonValue(prop);
+      // For the color input, it must be a valid hex, otherwise it throws a console error.
+      // Default to black if the value is 'Mixed' or not a valid hex format.
+      if (typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value)) {
+          return value;
+      }
+      if (prop === 'fill') return '#cccccc';
+      return '#000000';
+  }
 
   const handleImageFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0 || !isSingleImage) return;
@@ -351,7 +362,7 @@ export function RightSidebar({
                               <div>
                                 <Label>{isSingleText ? 'Color' : 'Fill'}</Label>
                                 <div className="flex items-center gap-2">
-                                  <Input type="color" value={String(getCommonValue('fill') ?? '#cccccc')} onChange={e => handlePropertyChange('fill', e.target.value, true)} className="p-1 h-8 w-8" />
+                                  <Input type="color" value={getColorValue('fill')} onChange={e => handlePropertyChange('fill', e.target.value, true)} className="p-1 h-8 w-8" />
                                   <Input type="text" value={String(getCommonValue('fill') ?? '')} onChange={e => handlePropertyChange('fill', e.target.value)} onFocus={handleInteractionStart} onBlur={handleInteractionEnd} placeholder={getCommonValue('fill') === 'Mixed' ? 'Mixed' : '#cccccc'} />
                                 </div>
                               </div>
@@ -415,7 +426,7 @@ export function RightSidebar({
                               <div>
                                 <Label>{isSingleText ? 'Outline' : 'Stroke'}</Label>
                                 <div className="flex items-center gap-2">
-                                  <Input type="color" value={String(getCommonValue('stroke') ?? '#000000')} onChange={e => handlePropertyChange('stroke', e.target.value, true)} className="p-1 h-8 w-8" />
+                                  <Input type="color" value={getColorValue('stroke')} onChange={e => handlePropertyChange('stroke', e.target.value, true)} className="p-1 h-8 w-8" />
                                   <Input type="text" value={String(getCommonValue('stroke') ?? '')} onChange={e => handlePropertyChange('stroke', e.target.value)} onFocus={handleInteractionStart} onBlur={handleInteractionEnd} placeholder={getCommonValue('stroke') === 'Mixed' ? 'Mixed' : '#000000'} />
                                 </div>
                               </div>
