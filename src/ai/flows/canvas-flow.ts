@@ -65,8 +65,6 @@ export const drawRectangleTool = ai.defineTool(
   }
 );
 
-const canvasDotPrompt = ai.prompt('canvas');
-
 /**
  * The main flow for generating shapes on the canvas.
  * It takes a user prompt and returns an array of generated shapes.
@@ -83,11 +81,11 @@ export const canvasFlow = ai.defineFlow(
     // Clear previously generated shapes before a new run.
     generatedShapes.length = 0;
 
-    const llmResponse = await canvasDotPrompt({
-        prompt,
+    const llmResponse = await ai.run('canvas', {
+        input: { prompt },
         tools: [drawRectangleTool],
     });
-    console.log(llmResponse.text);
+    console.log(llmResponse);
 
     console.log('[canvasFlow] generated shapes:', generatedShapes);
     return generatedShapes;
