@@ -16,15 +16,33 @@ const RectangleParamsSchema = z.object({
   fill: z.string().optional().describe('The fill color in hex format (e.g., "#ff0000").'),
 });
 
+// Define the Zod schema for the output of our tool.
+// This must match the actual return type of the tool's implementation.
+const RectangleShapeSchema = z.object({
+  id: z.string(),
+  type: z.literal('rectangle'),
+  name: z.string(),
+  x: z.number(),
+  y: z.number(),
+  width: z.number(),
+  height: z.number(),
+  rotation: z.number(),
+  opacity: z.number(),
+  fill: z.string(),
+  fillOpacity: z.number(),
+  strokeOpacity: z.number(),
+});
+
+
 // Define the tool that the AI can use to draw a rectangle.
 export const drawRectangleTool = ai.defineTool(
   {
     name: 'drawRectangle',
     description: 'Draws a rectangle shape on the canvas.',
     inputSchema: RectangleParamsSchema,
-    outputSchema: z.custom<RectangleShape>(),
+    outputSchema: RectangleShapeSchema,
   },
-  async (params): Promise<RectangleShape> => {
+  async (params): Promise<z.infer<typeof RectangleShapeSchema>> => {
     console.log('[drawRectangleTool input]', params);
     // Augment the AI's parameters with the standard shape properties.
     return {
@@ -56,9 +74,15 @@ export const canvasFlow = ai.defineFlow(
   async (prompt) => {
     console.log(`[canvasFlow] received prompt: "${prompt}"`);
 
+    // Get the model instance from the prompt definition.
+    const promptDefinition = await canvasDotPrompt.definition();
+    if (!promptDefinition.model) {
+      throw new Error('Model not defined in canvas.prompt');
+    }
+    const model = ai.model(promptDefinition.model.name);
+
     // Use a chat session to allow for tool-call-response cycles.
-    const chat = ai.chat({
-      model: await canvasDotPrompt.model(),
+    const chat = model.chat({
       tools: [drawRectangleTool],
       system: (await canvasDotPrompt.render()).messages[0]?.content[0].text,
     });
