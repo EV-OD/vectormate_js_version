@@ -1,19 +1,17 @@
 'use client';
 
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback } from 'react';
 import { AppHeader } from '@/components/header';
 import { Toolbar } from '@/components/toolbar';
 import { Canvas } from '@/components/canvas';
 import { RightSidebar } from '@/components/right-sidebar';
-import { type Shape, type Tool, type InteractionState, type CanvasView, ImageShape, SVGShape } from '@/lib/types';
+import { type Shape, type Tool, type InteractionState, type CanvasView, ImageShape } from '@/lib/types';
 import { exportToSvg, exportToJpeg, exportSelectionToSvg, exportSelectionToJpeg } from '@/lib/export';
 import { ContextMenu } from './context-menu';
 import { useEditorState } from '@/hooks/use-editor-state';
 import { useKeyboardAndClipboard } from '@/hooks/use-keyboard-and-clipboard';
 import { CropDialog } from './crop-dialog';
 import { PromptBar } from './prompt-bar';
-import { nanoid } from 'nanoid';
-import { simpleFlow } from '@/ai/flows/simple-flow';
 import { canvasFlow } from '@/ai/flows/canvas-flow';
 import { useToast } from '@/hooks/use-toast';
 
@@ -37,8 +35,6 @@ export function VectorEditor() {
     releaseClippingMask,
     undo,
     redo,
-    canUndo,
-    canRedo,
   } = useEditorState();
   
   const [activeTool, setActiveTool] = useState<Tool>('select');

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useRef, useState, useCallback } from 'react';
-import { type Shape, type Tool, type InteractionState, type Handle, PolygonShape, ShapeType, CanvasView, ImageShape, SVGShape, PathShape, TextShape } from '@/lib/types';
+import { type Shape, type Tool, type InteractionState, type Handle, PolygonShape, CanvasView, ImageShape, SVGShape, PathShape, TextShape } from '@/lib/types';
 import { nanoid } from 'nanoid';
 import { getBounds, getHexagonPoints, scalePolygonPoints, scalePathData, getTextDimensions } from '@/lib/geometry';
 import { SNAP_THRESHOLD } from '@/lib/constants';
@@ -423,8 +423,8 @@ export function useCanvasInteractions({
                 }
             }
 
-            let updatedProps: Partial<Shape> = { x: newX, y: newY, width: newWidth, height: newHeight };
-            if (currentShape.type === 'polygon') {
+            const updatedProps: Partial<Shape> = { x: newX, y: newY, width: newWidth, height: newHeight };
+            if (updatedProps.type === 'polygon') {
                 (updatedProps as PolygonShape).points = getHexagonPoints(newWidth, newHeight);
             }
             setDraftShapes([{ ...currentShape, ...updatedProps }]);
@@ -437,7 +437,7 @@ export function useCanvasInteractions({
             const initialShape = initialShapes[0];
 
             if (initialShape.type === 'text') {
-                let { x: sx, y: sy } = getMousePosition(e);
+                const { x: sx } = getMousePosition(e);
                 const snappedDx = sx - interactionState.startX;
                 const oldWidth = initialShape.width;
                 let newWidth = oldWidth + snappedDx;
@@ -468,7 +468,7 @@ export function useCanvasInteractions({
                 const snappedDx = sx - interactionState.startX;
                 const snappedDy = sy - interactionState.startY;
 
-                let newBounds = { x: initialShape.x, y: initialShape.y, width: initialShape.width, height: initialShape.height };
+                const newBounds = { x: initialShape.x, y: initialShape.y, width: initialShape.width, height: initialShape.height };
 
                 if (handle.includes('e')) newBounds.width = initialShape.width + snappedDx;
                 if (handle.includes('w')) { newBounds.width = initialShape.width - snappedDx; newBounds.x = initialShape.x + snappedDx; }

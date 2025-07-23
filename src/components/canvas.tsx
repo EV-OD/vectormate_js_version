@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { type Shape, type Tool, type InteractionState, type Handle, PolygonShape, ShapeType, CanvasView, RectangleShape, ImageShape, SVGShape, PathShape, TextShape } from '@/lib/types';
+import { type Shape, type Tool, type InteractionState, PolygonShape, RectangleShape, ImageShape, SVGShape, PathShape, TextShape, CanvasView } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { getBounds, getHexagonPoints } from '@/lib/geometry';
+import { getBounds } from '@/lib/geometry';
 import { useCanvasInteractions } from '@/hooks/use-canvas-interactions';
 import { SelectionBox } from './canvas/selection-box';
 import { ImageIcon } from 'lucide-react';
@@ -167,7 +167,7 @@ export function Canvas(props: CanvasProps) {
         <g>
           {shapesToRender.map(shape => {
             const { ...rest } = shape;
-            const commonProps: any = {
+            const commonProps: Record<string, string | number | undefined> = {
               'data-shape-id': rest.id,
               transform: `rotate(${rest.rotation} ${rest.x + rest.width / 2} ${rest.y + rest.height / 2})`,
             };
@@ -226,7 +226,7 @@ export function Canvas(props: CanvasProps) {
                           <line
                               x1={rest.x} y1={rest.y}
                               x2={rest.x + rest.width} y2={rest.y + rest.height}
-                              transform={commonProps.transform}
+                              transform={commonProps.transform as string}
                               data-shape-id={rest.id}
                               stroke="transparent"
                               strokeWidth={(rest.strokeWidth || 0) + HIT_AREA_PADDING}

@@ -4,7 +4,6 @@
  */
 import {ai} from '@/ai/genkit';
 import {z} from 'zod';
-import {type Shape, RectangleShape} from '@/lib/types';
 import {nanoid} from 'nanoid';
 
 // Define the Zod schema for the input of our rectangle-drawing tool.
@@ -74,20 +73,10 @@ export const canvasFlow = ai.defineFlow(
   async (prompt) => {
     console.log(`[canvasFlow] received prompt: "${prompt}"`);
 
-    // Get the model instance from the prompt definition.
-    const promptDefinition = await canvasDotPrompt.definition();
-    if (!promptDefinition.model) {
-      throw new Error('Model not defined in canvas.prompt');
-    }
-    const model = ai.model(promptDefinition.model.name);
-
-    // Use a chat session to allow for tool-call-response cycles.
-    const chat = model.chat({
-      tools: [drawRectangleTool],
-      system: (await canvasDotPrompt.render()).messages[0]?.content[0].text,
+    const llmResponse = await canvasDotPrompt({
+        prompt,
+        tools: [drawRectangleTool],
     });
-
-    const llmResponse = await chat.send(prompt);
 
     const toolRequests = llmResponse.toolRequests();
     console.log('[canvasFlow] tool requests:', toolRequests);
@@ -96,15 +85,15 @@ export const canvasFlow = ai.defineFlow(
       console.log('[canvasFlow] No tool requests from AI.');
       return [];
     }
-
+    
     const toolResponses = [];
     for (const call of toolRequests) {
-      if (call.tool === 'drawRectangle') {
-        const result = await drawRectangleTool(
-          call.input as z.infer<typeof RectangleParamsSchema>
-        );
-        toolResponses.push(result);
-      }
+        if (call.tool === 'drawRectangle') {
+            const result = await drawRectangleTool(
+                call.input as z.infer<typeof RectangleParamsSchema>
+            );
+            toolResponses.push(result);
+        }
     }
 
     console.log('[canvasFlow] generated shapes:', toolResponses);

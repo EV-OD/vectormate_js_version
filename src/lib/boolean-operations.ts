@@ -4,7 +4,7 @@ import type { Clipper2ZFactoryFunction, MainModule } from 'clipper2-wasm/dist/um
 
 import * as _Clipper2ZFactory from 'clipper2-wasm/dist/umd/clipper2z';
 
-const Clipper2ZFactory: Clipper2ZFactoryFunction = (_Clipper2ZFactory as any).default || _Clipper2ZFactory;
+const Clipper2ZFactory: Clipper2ZFactoryFunction = (_Clipper2ZFactory as Record<string, unknown>).default as Clipper2ZFactoryFunction || _Clipper2ZFactory as Clipper2ZFactoryFunction;
 
 let wasmModulePromise: Promise<MainModule> | null = null;
 
@@ -64,7 +64,7 @@ function shapeToPoints(shape: Shape): number[] {
             }
             break;
         case 'polygon':
-            const polyPoints = shape.points.split(' ').map(p => {
+            const polyPoints = (shape as PolygonShape).points.split(' ').map(p => {
                 const [x, y] = p.split(',').map(Number);
                 return { x: shape.x + x, y: shape.y + y }; // to world coords
             });
@@ -77,7 +77,7 @@ function shapeToPoints(shape: Shape): number[] {
 async function performWasmOperation(shape1: Shape, shape2: Shape, opType: 'union' | 'subtract' | 'intersect' | 'exclude'): Promise<PolygonShape | null> {
     try {
         const wasmModule = await initializeWasm();
-        const { MakePathD, PathsD, ClipType, FillRule, UnionD, IntersectD, DifferenceD, XorD } = wasmModule;
+        const { MakePathD, PathsD, FillRule, UnionD, IntersectD, DifferenceD, XorD } = wasmModule;
 
         const subjectPoints = shapeToPoints(shape1);
         const clipPoints = shapeToPoints(shape2);

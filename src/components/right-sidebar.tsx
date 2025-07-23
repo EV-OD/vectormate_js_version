@@ -81,7 +81,7 @@ export function RightSidebar({
     onCommit();
   }, [setInteractionState, onCommit]);
 
-  const handlePropertyChange = (prop: keyof Shape | 'svgString' | 'd' | 'text' | 'fontSize' | 'fontFamily' | 'fontWeight' | 'href' | 'lowQualityHref', value: any, commit: boolean = false) => {
+  const handlePropertyChange = (prop: keyof Shape | 'svgString' | 'd' | 'text' | 'fontSize' | 'fontFamily' | 'fontWeight' | 'href' | 'lowQualityHref', value: string | number, commit: boolean = false) => {
     const updated = selectedShapes.map(s => {
       const newShape = { ...s };
 
@@ -110,10 +110,10 @@ export function RightSidebar({
                     (newShape as PathShape).d = scalePathData(originalD, oldWidth, oldHeight, newWidth, newHeight);
                 }
             }
-            (newShape as any)[prop] = numValue;
+            (newShape as Record<string, unknown>)[prop] = numValue;
         }
       } else {
-        (newShape as any)[prop] = value;
+        (newShape as Record<string, unknown>)[prop] = value;
         if (newShape.type === 'svg' && prop === 'svgString' && typeof value === 'string') {
           newShape.dataUrl = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(value)))}`;
         }
@@ -134,18 +134,18 @@ export function RightSidebar({
   
   const getCommonValue = (prop: keyof Shape | 'href' | 'svgString' | 'text' | 'fontSize' | 'fontFamily' | 'fontWeight'): string | number => {
     if (!shape) return '';
-    const firstValue = (shape as any)[prop];
+    const firstValue = (shape as Record<string, unknown>)[prop as string];
     if (multipleSelected) {
-        const allSame = selectedShapes.every(s => (s as any)[prop] === firstValue);
+        const allSame = selectedShapes.every(s => (s as Record<string, unknown>)[prop as string] === firstValue);
         if (!allSame) return 'Mixed';
     }
     if (typeof firstValue === 'number') return Math.round(firstValue);
-    return firstValue ?? '';
+    return (firstValue as string) ?? '';
   }
 
   const getSliderValue = (prop: keyof Shape, multiplier: number = 1, defaultValue: number = 0): number => {
       if (!shape) return defaultValue;
-      const firstValue = (shape as any)[prop];
+      const firstValue = (shape as Record<string, unknown>)[prop as string];
       if (typeof firstValue === 'number') {
         return firstValue * multiplier;
       }

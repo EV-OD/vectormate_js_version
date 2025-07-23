@@ -153,7 +153,7 @@ export function useEditorState() {
   const deleteShapesByIds = useCallback((ids: string[]) => {
     if (ids.length > 0) {
       setState(current => {
-        let allIdsToDelete = [...ids];
+        const allIdsToDelete = new Set(ids);
         const groupIdsToDelete = new Set<string>();
 
         ids.forEach(id => {
@@ -166,12 +166,12 @@ export function useEditorState() {
         groupIdsToDelete.forEach(groupId => {
             current.shapes.forEach(shape => {
                 if (shape.groupId === groupId) {
-                    allIdsToDelete.push(shape.id);
+                    allIdsToDelete.add(shape.id);
                 }
             });
         });
         
-        const uniqueIdsToDelete = [...new Set(allIdsToDelete)];
+        const uniqueIdsToDelete = [...allIdsToDelete];
 
         const shapesToDelete = current.shapes.filter(s => uniqueIdsToDelete.includes(s.id));
         const maskIdsToDelete = new Set(shapesToDelete.filter(s => s.isClippingMask).map(s => s.id));
@@ -180,7 +180,7 @@ export function useEditorState() {
             .filter(s => !uniqueIdsToDelete.includes(s.id))
             .map(s => {
                 if (s.clippedBy && maskIdsToDelete.has(s.clippedBy)) {
-                    const { clippedBy, ...rest } = s;
+                    const { clippedBy: _clippedBy, ...rest } = s;
                     return rest as Shape;
                 }
                 return s;
@@ -391,7 +391,7 @@ export function useEditorState() {
         
         const newShapes = current.shapes.map(s => {
             if (s.groupId === shape.groupId) {
-                const { groupId, isClippingMask, clippedBy, strokeDasharray, ...rest } = s;
+                const { groupId: _groupId, isClippingMask: _isClippingMask, clippedBy: _clippedBy, strokeDasharray: _strokeDasharray, ...rest } = s;
                 
                 if(maskShape && s.id === maskShape.id) {
                     return { 
