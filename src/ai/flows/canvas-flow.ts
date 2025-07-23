@@ -5,7 +5,8 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'zod';
 import {nanoid} from 'nanoid';
-import {type Shape} from '@/lib/types';
+import {type Shape, TextShape} from '@/lib/types';
+import { getTextDimensions } from '@/lib/geometry';
 
 // This array will hold the results of the tool calls.
 const generatedShapes: Shape[] = [];
@@ -157,6 +158,65 @@ export const drawLineTool = ai.defineTool(
   }
 );
 
+// --- Text Tool ---
+const TextParamsSchema = z.object({
+  text: z.string().describe('The text content to display.'),
+  x: z.number().describe('The x-coordinate of the top-left corner of the text.'),
+  y: z.number().describe('The y-coordinate of the top-left corner of the text.'),
+  fontSize: z.number().optional().default(48).describe('The font size of the text.'),
+  fontFamily: z.string().optional().default('Inter').describe('The font family of the text.'),
+  fontWeight: z.enum(['normal', 'bold']).optional().default('normal').describe('The font weight of the text.'),
+  fill: z.string().optional().describe('The fill color in hex format (e.g., "#ff0000").'),
+});
+
+const TextShapeSchema = z.object({
+    id: z.string(),
+    type: z.literal('text'),
+    name: z.string(),
+    x: z.number(),
+    y: z.number(),
+    width: z.number(),
+    height: z.number(),
+    rotation: z.number(),
+    opacity: z.number(),
+    text: z.string(),
+    fontSize: z.number(),
+    fontFamily: z.string(),
+    fontWeight: z.enum(['normal', 'bold']),
+    fill: z.string(),
+});
+
+export const drawTextTool = ai.defineTool(
+  {
+    name: 'drawText',
+    description: 'Draws text on the canvas.',
+    inputSchema: TextParamsSchema,
+    outputSchema: TextShapeSchema,
+  },
+  async (params): Promise<z.infer<typeof TextShapeSchema>> => {
+    console.log('[drawTextTool input]', params);
+    const { width, height } = getTextDimensions(params.text, params.fontSize, params.fontFamily, params.fontWeight);
+    const newShape: TextShape = {
+      id: nanoid(),
+      type: 'text',
+      name: 'Text',
+      x: params.x,
+      y: params.y,
+      width,
+      height,
+      rotation: 0,
+      opacity: 1,
+      text: params.text,
+      fontSize: params.fontSize,
+      fontFamily: params.fontFamily,
+      fontWeight: params.fontWeight,
+      fill: params.fill ?? '#ffffff',
+    };
+    generatedShapes.push(newShape);
+    return newShape;
+  }
+);
+
 
 /**
  * The main flow for generating shapes on the canvas.
@@ -177,7 +237,7 @@ export const canvasFlow = ai.defineFlow(
     const llmResponse = await ai.generate({
         prompt: `You are a creative assistant for a vector design application. Your primary task is to interpret the user's text prompt and use the available tools to create shapes on the canvas. Carefully analyze the user's request and break it down into one or more function calls to the provided tools. Pay close attention to the tool's input schema and description to understand its capabilities. The user's prompt is: "${prompt}"`,
         model: 'googleai/gemini-1.5-flash',
-        tools: [drawRectangleTool, drawCircleTool, drawLineTool],
+        tools: [drawRectangleTool, drawCircleTool, drawLineTool, drawTextTool],
     });
     console.log(llmResponse);
 
