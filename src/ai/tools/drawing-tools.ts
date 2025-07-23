@@ -4,7 +4,7 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 import { nanoid } from 'nanoid';
-import { type Shape, TextShape } from '@/lib/types';
+import { type Shape, TextShape, RectangleShape } from '@/lib/types';
 import { getTextDimensions } from '@/lib/geometry';
 
 // This array will hold the results of the tool calls. It's exported so the flow can access it.
@@ -17,6 +17,7 @@ const RectangleParamsSchema = z.object({
   width: z.number().describe('The width of the rectangle.'),
   height: z.number().describe('The height of the rectangle.'),
   fill: z.string().optional().describe('The fill color in hex format (e.g., "#ff0000").'),
+  borderRadius: z.number().optional().describe('The corner radius of the rectangle.'),
 });
 const RectangleShapeSchema = z.object({
   id: z.string(),
@@ -31,6 +32,7 @@ const RectangleShapeSchema = z.object({
   fill: z.string(),
   fillOpacity: z.number(),
   strokeOpacity: z.number(),
+  borderRadius: z.number().optional(),
 });
 export const drawRectangleTool = ai.defineTool(
   {
@@ -41,7 +43,7 @@ export const drawRectangleTool = ai.defineTool(
   },
   async (params): Promise<z.infer<typeof RectangleShapeSchema>> => {
     console.log('[drawRectangleTool input]', params);
-    const newShape = {
+    const newShape: RectangleShape = {
       id: nanoid(),
       type: 'rectangle' as const,
       name: 'Rectangle',
@@ -51,6 +53,7 @@ export const drawRectangleTool = ai.defineTool(
       fill: params.fill ?? '#cccccc',
       fillOpacity: 1,
       strokeOpacity: 1,
+      borderRadius: params.borderRadius ?? 0,
     };
     generatedShapes.push(newShape);
     return newShape;
@@ -213,5 +216,78 @@ export const drawTextTool = ai.defineTool(
     };
     generatedShapes.push(newShape);
     return newShape;
+  }
+);
+
+// --- Button Tool (Preset) ---
+const ButtonParamsSchema = z.object({
+    x: z.number().describe("The x-coordinate of the button's top-left corner."),
+    y: z.number().describe("The y-coordinate of the button's top-left corner."),
+    width: z.number().optional().default(150).describe("The width of the button."),
+    height: z.number().optional().default(50).describe("The height of the button."),
+    text: z.string().describe("The text label for the button."),
+    backgroundColor: z.string().optional().default("#007bff").describe("The background color of the button in hex format."),
+    textColor: z.string().optional().default("#ffffff").describe("The text color in hex format."),
+});
+
+const ButtonOutputSchema = z.object({
+    buttonRectangle: RectangleShapeSchema,
+    buttonText: TextShapeSchema,
+});
+
+export const drawButtonTool = ai.defineTool(
+  {
+    name: 'drawButton',
+    description: 'Draws a complete button with a background rectangle and centered text. This is a preset tool.',
+    inputSchema: ButtonParamsSchema,
+    outputSchema: ButtonOutputSchema,
+  },
+  async (params): Promise<z.infer<typeof ButtonOutputSchema>> => {
+    console.log('[drawButtonTool input]', params);
+
+    // 1. Create the button rectangle
+    const buttonRectangle: RectangleShape = {
+      id: nanoid(),
+      type: 'rectangle',
+      name: `${params.text} Button`,
+      x: params.x,
+      y: params.y,
+      width: params.width,
+      height: params.height,
+      rotation: 0,
+      opacity: 1,
+      fill: params.backgroundColor,
+      fillOpacity: 1,
+      strokeOpacity: 1,
+      borderRadius: 8, // Default rounded corners for buttons
+    };
+    generatedShapes.push(buttonRectangle);
+
+    // 2. Create the button text
+    const fontSize = Math.min(params.height * 0.4, params.width / params.text.length * 1.5);
+    const { width: textWidth, height: textHeight } = getTextDimensions(params.text, fontSize, 'Inter', 'bold');
+
+    const textX = params.x + (params.width - textWidth) / 2;
+    const textY = params.y + (params.height - textHeight) / 2;
+
+    const buttonText: TextShape = {
+      id: nanoid(),
+      type: 'text',
+      name: `${params.text} Label`,
+      x: textX,
+      y: textY,
+      width: textWidth,
+      height: textHeight,
+      rotation: 0,
+      opacity: 1,
+      text: params.text,
+      fontSize,
+      fontFamily: 'Inter',
+      fontWeight: 'bold',
+      fill: params.textColor,
+    };
+    generatedShapes.push(buttonText);
+    
+    return { buttonRectangle, buttonText };
   }
 );
