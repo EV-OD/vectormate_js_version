@@ -20,6 +20,7 @@ import { drawCardTool } from '../tools/ui/card';
 import { drawFormTool } from '../tools/ui/form';
 import { generatedShapes } from '@/ai/tools/drawing';
 import { drawFrameTool } from '../tools/ui/frame';
+import { drawGridLayoutTool } from '../tools/ui/grid';
 
 
 /**
@@ -54,6 +55,7 @@ export const canvasFlow = ai.defineFlow(
           drawCardTool,
           drawFormTool,
           drawFrameTool,
+          drawGridLayoutTool,
         ],
     });
 
