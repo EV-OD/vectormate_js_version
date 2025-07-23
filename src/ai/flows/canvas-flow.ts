@@ -19,6 +19,7 @@ import { drawLabelTool } from '../tools/ui/label';
 import { drawCardTool } from '../tools/ui/card';
 import { drawFormTool } from '../tools/ui/form';
 import { generatedShapes } from '@/ai/tools/drawing';
+import { drawFrameTool } from '../tools/ui/frame';
 
 
 /**
@@ -52,6 +53,7 @@ export const canvasFlow = ai.defineFlow(
           drawLabelTool,
           drawCardTool,
           drawFormTool,
+          drawFrameTool,
         ],
     });
 
