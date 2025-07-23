@@ -1,4 +1,3 @@
-'use server';
 /**
  * @fileOverview Defines and exports AI tools for drawing shapes on the canvas.
  */
