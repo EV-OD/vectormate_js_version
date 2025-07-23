@@ -19,10 +19,12 @@ const ButtonParamsSchema = z.object({
   textColor: z.string().optional().describe('The text color in hex format.'),
 });
 
-const ButtonOutputSchema = z.object({
+export const ButtonOutputSchema = z.object({
   buttonRectangle: RectangleShapeSchema,
   buttonText: TextShapeSchema,
 });
+export type ButtonOutput = z.infer<typeof ButtonOutputSchema>;
+
 
 export const drawButtonTool = ai.defineTool(
   {

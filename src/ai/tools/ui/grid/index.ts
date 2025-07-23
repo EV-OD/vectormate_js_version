@@ -14,6 +14,7 @@ import { drawLabelTool } from '../label';
 import { drawCardTool } from '../card';
 import { drawFormTool } from '../form';
 import { drawFrameTool } from '../frame';
+import { drawNavbarTool } from '../navbar';
 
 // A map of all tools that can be called by the grid layout tool.
 const availableTools: { [key: string]: any } = {
@@ -29,6 +30,7 @@ const availableTools: { [key: string]: any } = {
   drawCard: drawCardTool,
   drawForm: drawFormTool,
   drawFrame: drawFrameTool,
+  drawNavbar: drawNavbarTool,
   drawGridLayout: (...args: any[]) => drawGridLayoutTool(...args), // Add self-reference
 };
 

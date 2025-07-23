@@ -21,6 +21,7 @@ import { drawFormTool } from '../tools/ui/form';
 import { generatedShapes } from '@/ai/tools/drawing';
 import { drawFrameTool } from '../tools/ui/frame';
 import { drawGridLayoutTool } from '../tools/ui/grid';
+import { drawNavbarTool } from '../tools/ui/navbar';
 
 
 /**
@@ -63,6 +64,7 @@ The user's prompt is: "${prompt}"`,
           drawFormTool,
           drawFrameTool,
           drawGridLayoutTool,
+          drawNavbarTool,
         ],
     });
 
