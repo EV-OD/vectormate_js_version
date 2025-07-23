@@ -667,3 +667,115 @@ export const drawCardTool = ai.defineTool(
     return { cardRectangle, titleText: titleShape };
   }
 );
+
+
+// --- Form Tool (Meta-Tool) ---
+const FormParamsSchema = z.object({
+  x: z.number().describe("The form container's top-left x-coordinate."),
+  y: z.number().describe("The form container's top-left y-coordinate."),
+  width: z.number().optional().default(350).describe("The width of the form."),
+  title: z.string().describe("The title of the form, like 'Login' or 'Sign Up'."),
+  inputs: z.array(z.object({
+    label: z.string().describe("The label for the input field (e.g., 'Username', 'Password')."),
+    placeholder: z.string().optional().describe("The placeholder text for the input field."),
+  })).describe("An array of input fields to include in the form."),
+  buttonText: z.string().describe("The text for the submit button (e.g., 'Log In', 'Create Account')."),
+});
+
+export const drawFormTool = ai.defineTool(
+  {
+    name: 'drawForm',
+    description: 'Draws a complete UI form, including a title, input fields with labels, and a submit button. This is a high-level component tool.',
+    inputSchema: FormParamsSchema,
+    outputSchema: z.object({
+      card: RectangleShapeSchema,
+      title: TextShapeSchema,
+      // We are not returning all inputs and buttons, as that would make the schema very complex.
+      // The individual shapes are already pushed to the `generatedShapes` array.
+    }),
+  },
+  async (params) => {
+    console.log('[drawFormTool input]', params);
+
+    // Define layout constants
+    const PADDING = 25;
+    const TITLE_FONT_SIZE = 28;
+    const LABEL_FONT_SIZE = 14;
+    const INPUT_HEIGHT = 40;
+    const BUTTON_HEIGHT = 45;
+    const GAP_TITLE_INPUT = 25;
+    const GAP_INPUT_GROUP = 20;
+    const GAP_LABEL_INPUT = 8;
+    const GAP_LAST_INPUT_BUTTON = 30;
+
+    let currentY = params.y + PADDING;
+
+    // 1. Title
+    const { width: titleWidth, height: titleHeight } = getTextDimensions(params.title, TITLE_FONT_SIZE, 'Inter', 'bold');
+    const titleShape = await drawTextTool({
+      text: params.title,
+      x: params.x + (params.width - titleWidth) / 2, // Center the title
+      y: currentY,
+      fontSize: TITLE_FONT_SIZE,
+      fontWeight: 'bold',
+      fill: '#ffffff',
+    });
+    currentY += titleHeight + GAP_TITLE_INPUT;
+
+    // 2. Inputs and Labels
+    for (const input of params.inputs) {
+      // Label
+      const { height: labelHeight } = getTextDimensions(input.label, LABEL_FONT_SIZE, 'Inter', 'normal');
+      await drawLabelTool({
+        text: input.label,
+        x: params.x + PADDING,
+        y: currentY,
+        fontSize: LABEL_FONT_SIZE,
+      });
+      currentY += labelHeight + GAP_LABEL_INPUT;
+
+      // Input Box
+      await drawInputBoxTool({
+        x: params.x + PADDING,
+        y: currentY,
+        width: params.width - (PADDING * 2),
+        height: INPUT_HEIGHT,
+        placeholderText: input.placeholder,
+      });
+      currentY += INPUT_HEIGHT + GAP_INPUT_GROUP;
+    }
+    
+    currentY -= GAP_INPUT_GROUP; // Adjust for last gap
+    currentY += GAP_LAST_INPUT_BUTTON;
+
+    // 3. Button
+    await drawButtonTool({
+      x: params.x + PADDING,
+      y: currentY,
+      width: params.width - (PADDING * 2),
+      height: BUTTON_HEIGHT,
+      text: params.buttonText,
+    });
+    currentY += BUTTON_HEIGHT;
+    
+    // 4. Container Card
+    const totalHeight = currentY - params.y + PADDING;
+    const cardShape = await drawCardTool({
+        x: params.x,
+        y: params.y,
+        width: params.width,
+        height: totalHeight,
+        title: '', // We handle title separately
+    });
+    
+    // Since drawCardTool adds its own shape, we need to find it and bring it to the back.
+    // This is a bit of a hack, but necessary given the current tool structure.
+    const cardIndex = generatedShapes.findIndex(s => s.id === cardShape.cardRectangle.id);
+    if (cardIndex > -1) {
+        const [cardToMove] = generatedShapes.splice(cardIndex, 1);
+        generatedShapes.unshift(cardToMove);
+    }
+    
+    return { card: cardShape.cardRectangle, title: titleShape };
+  }
+);
