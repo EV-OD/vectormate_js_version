@@ -48,6 +48,8 @@ const FormFieldSchema = z.union([
   LinkFieldSchema,
 ]);
 
+type FormField = z.infer<typeof FormFieldSchema>;
+
 const FormParamsSchema = z.object({
   x: z.number().describe("The form container's top-left x-coordinate."),
   y: z.number().describe("The form container's top-left y-coordinate."),
@@ -56,9 +58,9 @@ const FormParamsSchema = z.object({
     .string()
     .describe("The title of the form, like 'Login' or 'Sign Up'."),
   fields: z
-    .array(FormFieldSchema)
+    .string()
     .describe(
-      'An array of fields to include in the form, such as text inputs, checkboxes, or links.'
+      'A JSON string representing an array of fields to include in the form. Example: `[{"type": "input", "label": "Email"}, {"type": "checkbox", "label": "Remember me"}]`'
     ),
   buttonText: z
     .string()
@@ -80,6 +82,15 @@ export const drawFormTool = ai.defineTool(
   },
   async (params) => {
     console.log('[drawFormTool input]', params);
+
+    let parsedFields: FormField[] = [];
+    try {
+      parsedFields = JSON.parse(params.fields);
+    } catch (e) {
+      console.error('Failed to parse form fields JSON:', e);
+      throw new Error('Invalid JSON string for form fields.');
+    }
+
 
     const PADDING = 25;
     const TITLE_FONT_SIZE = 28;
@@ -110,7 +121,7 @@ export const drawFormTool = ai.defineTool(
     });
     currentY += titleHeight + GAP_TITLE_INPUT;
 
-    for (const field of params.fields) {
+    for (const field of parsedFields) {
       switch (field.type) {
         case 'input': {
           const { height: labelHeight } = getTextDimensions(
