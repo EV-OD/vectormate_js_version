@@ -14,6 +14,7 @@ import { CropDialog } from './crop-dialog';
 import { PromptBar } from './prompt-bar';
 import { nanoid } from 'nanoid';
 import { simpleFlow } from '@/ai/flows/simple-flow';
+import { canvasFlow } from '@/ai/flows/canvas-flow';
 import { useToast } from '@/hooks/use-toast';
 
 export function VectorEditor() {
@@ -193,9 +194,13 @@ export function VectorEditor() {
   const handleAIPrompt = useCallback(async (prompt: string) => {
     setIsAiLoading(true);
     try {
-      const result = await simpleFlow(prompt);
-      toast({ title: "AI Response", description: result });
-      console.log(`AI Response: ${result}`);
+      const generatedShapes = await canvasFlow(prompt);
+      console.log('Shapes from AI:', generatedShapes);
+      if (generatedShapes && generatedShapes.length > 0) {
+        toast({ title: "AI Shapes Generated", description: `${generatedShapes.length} shape(s) were created.` });
+      } else {
+        toast({ title: "AI", description: "The AI did not generate any shapes." });
+      }
     } catch (error) {
       console.error("AI flow failed:", error);
       toast({
