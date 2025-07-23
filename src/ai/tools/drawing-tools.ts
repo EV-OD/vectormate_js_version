@@ -180,8 +180,8 @@ const TextShapeSchema = z.object({
     opacity: z.number(),
     text: z.string(),
     fontSize: z.number(),
-    fontFamily: z.string(),
-    fontWeight: z.enum(['normal', 'bold']),
+    fontFamily: z.string().optional(),
+    fontWeight: z.enum(['normal', 'bold']).optional(),
     fill: z.string(),
 });
 
